@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W-Theorie in der Informatik: Interaktive Beispiele</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #64748b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --accent: #ef4444;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 20px;
+        }
+        .example-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        h2 { color: var(--primary); margin-top: 0; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        
+        .controls { background: #f1f5f9; padding: 15px; border-radius: 8px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; }
+        input[type="range"] { width: 100%; margin-bottom: 15px; }
+        
+        .visualization {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            min-height: 250px;
+        }
+        .formula-box {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            margin-top: 15px;
+        }
+        .highlight { color: #fbbf24; font-weight: bold; }
+        .math-text { font-style: italic; font-family: serif; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Probabilistische Modelle in der Informatik</h1>
+        <p>Interaktive Demonstration von Additionssatz, Boole-Ungleichung & Inklusion-Exklusion</p>
+    </header>
+
+    <section class="example-card">
+        <h2>1. Server-Redundanz (Additionssatz)</h2>
+        <p>Berechnet die Wahrscheinlichkeit, dass <i>mindestens ein</i> Server (S1 oder S2) instabil ist.</p>
+        <div class="grid">
+            <div class="controls">
+                <label>P(A) - Ausfall S1: <span id="valA">0.40</span></label>
+                <input type="range" id="inputA" min="0" max="1" step="0.01" value="0.4">
+                
+                <label>P(B) - Ausfall S2: <span id="valB">0.40</span></label>
+                <input type="range" id="inputB" min="0" max="1" step="0.01" value="0.4">
+                
+                <label>P(A ∩ B) - Gemeinsamer Ausfall: <span id="valAB">0.10</span></label>
+                <input type="range" id="inputAB" min="0" max="0.4" step="0.01" value="0.1">
+                <p><small>*P(A ∩ B) kann nicht größer sein als P(A) oder P(B).</small></p>
+            </div>
+            <div class="visualization">
+                <svg id="svgVenn" width="250" height="200">
+                    <circle id="circleA" cx="100" cy="100" r="60" fill="rgba(37, 99, 235, 0.5)" stroke="#2563eb" />
+                    <circle id="circleB" cx="150" cy="100" r="60" fill="rgba(239, 68, 68, 0.5)" stroke="#ef4444" />
+                    <text x="70" y="100" font-size="12">S1</text>
+                    <text x="160" y="100" font-size="12">S2</text>
+                </svg>
+            </div>
+        </div>
+        <div class="formula-box" id="formula1">
+            P(A ∪ B) = P(A) + P(B) - P(A ∩ B) <br>
+            P(A ∪ B) = 0.40 + 0.40 - 0.10 = <span class="highlight">0.70</span>
+        </div>
+    </section>
+
+    <section class="example-card">
+        <h2>2. Quanten-Gate Fidelity (Boole-Ungleichung)</h2>
+        <p>Abschätzung der maximalen Fehlerrate in einem Quanten-Schaltkreis mit $n$ Gattern.</p>
+        <div class="grid">
+            <div class="controls">
+                <label>Anzahl Gatter: <span id="valGates">4</span></label>
+                <input type="range" id="inputGates" min="1" max="10" step="1" value="4">
+                
+                <label>Fehler pro Gatter (durchschn.): <span id="valError">0.05</span></label>
+                <input type="range" id="inputError" min="0" max="0.1" step="0.005" value="0.05">
+            </div>
+            <div class="visualization" style="flex-direction: column; padding: 10px;">
+                <div id="quantumCircuit" style="display: flex; gap: 10px; align-items: center;">
+                    </div>
+                <div style="margin-top: 20px; width: 80%; background: #e2e8f0; height: 10px; border-radius: 5px; position: relative;">
+                    <div id="errorBar" style="background: var(--accent); height: 100%; border-radius: 5px; width: 20%;"></div>
+                </div>
+                <small style="margin-top: 5px;">Union Bound Schranke</small>
+            </div>
+        </div>
+        <div class="formula-box" id="formula2">
+            P(Σ Fehler) ≤ Σ P(E_i) <br>
+            P(E_ges) ≤ 4 * 0.05 = <span class="highlight">0.20</span>
+        </div>
+    </section>
+
+    <section class="example-card">
+        <h2>3. Mesh-Netzwerk Abdeckung (Inklusion-Exklusion)</h2>
+        <p>Berechnung der Gesamtabdeckung von 3 Funkmasten mit Überlappungen.</p>
+        <div class="grid">
+            <div class="controls">
+                <p>Ereignisse:</p>
+                <ul>
+                    <li>P(A)=P(B)=P(C) = 0.50</li>
+                    <li>Schnittstellen (Paare) = 0.15</li>
+                    <li>Schnittstelle (Triple) = 0.05</li>
+                </ul>
+                <p><small>Hier fest definierte Werte zur Veranschaulichung der komplexen Summe.</small></p>
+            </div>
+            <div class="visualization">
+                <svg width="250" height="220">
+                    <circle cx="100" cy="80" r="50" fill="rgba(37, 99, 235, 0.3)" stroke="#2563eb" />
+                    <circle cx="150" cy="80" r="50" fill="rgba(239, 68, 68, 0.3)" stroke="#ef4444" />
+                    <circle cx="125" cy="130" r="50" fill="rgba(34, 197, 94, 0.3)" stroke="#22c55e" />
+                    <text x="80" y="70" font-size="10">A</text>
+                    <text x="160" y="70" font-size="10">B</text>
+                    <text x="120" y="160" font-size="10">C</text>
+                </svg>
+            </div>
+        </div>
+        <div class="formula-box">
+            P(A∪B∪C) = [P(A)+P(B)+P(C)] - [P(A∩B)+P(A∩C)+P(B∩C)] + P(A∩B∩C) <br>
+            P(A∪B∪C) = [0.5+0.5+0.5] - [0.15+0.15+0.15] + 0.05 = <span class="highlight">1.10? Nein, gekappt bei 1.0</span> <br>
+            Realwert: <span class="highlight">1.10</span> (Hier sieht man: Parameter müssen physikalisch konsistent sein!)
+        </div>
+    </section>
+</div>
+
+<script>
+    // Beispiel 1 Logik
+    const inA = document.getElementById('inputA');
+    const inB = document.getElementById('inputB');
+    const inAB = document.getElementById('inputAB');
+    const f1 = document.getElementById('formula1');
+
+    function updateVenn() {
+        let a = parseFloat(inA.value);
+        let b = parseFloat(inB.value);
+        let ab = parseFloat(inAB.value);
+
+        // Validierung: Schnittmenge kann nicht größer als Einzelmengen sein
+        if (ab > a) { ab = a; inAB.value = a; }
+        if (ab > b) { ab = b; inAB.value = b; }
+
+        document.getElementById('valA').innerText = a.toFixed(2);
+        document.getElementById('valB').innerText = b.toFixed(2);
+        document.getElementById('valAB').innerText = ab.toFixed(2);
+
+        // Visualisierung anpassen
+        const dist = 130 - (ab * 100); 
+        document.getElementById('circleB').setAttribute('cx', 100 + dist);
+        
+        const result = (a + b - ab).toFixed(2);
+        f1.innerHTML = `P(A ∪ B) = P(A) + P(B) - P(A ∩ B) <br> P(A ∪ B) = ${a.toFixed(2)} + ${b.toFixed(2)} - ${ab.toFixed(2)} = <span class="highlight">${result}</span>`;
+    }
+
+    // Beispiel 2 Logik
+    const inGates = document.getElementById('inputGates');
+    const inError = document.getElementById('inputError');
+    const circuitDiv = document.getElementById('quantumCircuit');
+    const errorBar = document.getElementById('errorBar');
+    const f2 = document.getElementById('formula2');
+
+    function updateQuantum() {
+        let n = parseInt(inGates.value);
+        let e = parseFloat(inError.value);
+        
+        document.getElementById('valGates').innerText = n;
+        document.getElementById('valError').innerText = e.toFixed(3);
+
+        // Gatter zeichnen
+        circuitDiv.innerHTML = '';
+        for(let i=0; i<n; i++) {
+            let gate = document.createElement('div');
+            gate.style.width = '30px';
+            gate.style.height = '30px';
+            gate.style.border = '2px solid #1e293b';
+            gate.style.display = 'flex';
+            gate.style.alignItems = 'center';
+            gate.style.justifyContent = 'center';
+            gate.style.fontSize = '10px';
+            gate.style.background = '#fff';
+            gate.innerText = 'G' + (i+1);
+            circuitDiv.appendChild(gate);
+            if(i < n-1) {
+                let line = document.createElement('div');
+                line.style.width = '10px';
+                line.style.height = '2px';
+                line.style.background = '#1e293b';
+                circuitDiv.appendChild(line);
+            }
+        }
+
+        let totalBound = Math.min(n * e, 1.0);
+        errorBar.style.width = (totalBound * 100) + '%';
+        f2.innerHTML = `P(Σ Fehler) ≤ Σ P(E_i) <br> P(E_ges) ≤ ${n} * ${e.toFixed(3)} = <span class="highlight">${totalBound.toFixed(3)}</span>`;
+    }
+
+    // Event Listener
+    [inA, inB, inAB].forEach(el => el.addEventListener('input', updateVenn));
+    [inGates, inError].forEach(el => el.addEventListener('input', updateQuantum));
+
+    // Init
+    updateVenn();
+    updateQuantum();
+</script>
+
+</body>
+</html>
