@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Sampled Token Prediction</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, sans-serif;
+    color: #1a1a1a;
+    background: #f5f4f0;
+    padding: 2rem;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  h2 { font-size: 20px; font-weight: 500; margin-bottom: 1.5rem; }
+  h3 { font-size: 14px; font-weight: 500; color: #555; margin-bottom: 8px; }
+  .section {
+    background: #fff;
+    border: 0.5px solid #ddd;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  label { font-size: 13px; color: #555; }
+  input[type=number], input[type=text] {
+    border: 0.5px solid #ccc;
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 13px;
+    background: #fff;
+    color: #1a1a1a;
+  }
+  input:focus { outline: none; box-shadow: 0 0 0 2px #b5d4f4; }
+
+  .prob-table { border-collapse: collapse; width: auto; }
+  .prob-table th, .prob-table td {
+    border: 0.5px solid #ddd;
+    padding: 6px 10px;
+    text-align: center;
+    font-size: 13px;
+  }
+  .prob-table th {
+    background: #f5f4f0;
+    font-weight: 500;
+    font-size: 12px;
+    color: #555;
+  }
+  .prob-table td input {
+    width: 56px;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-size: 13px;
+    color: #1a1a1a;
+    outline: none;
+    padding: 2px 4px;
+  }
+  .prob-table td input:focus { background: #e6f1fb; border-radius: 4px; }
+  .row-warning { font-size: 11px; min-width: 80px; display: inline-block; }
+
+  .token-stream {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 40px;
+    align-items: center;
+    margin-top: 10px;
+  }
+  .tok {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: default;
+    position: relative;
+  }
+  .tok-prompt { background: #EEEDFE; color: #3C3489; }
+  .tok-sep { width: 1px; height: 24px; background: #ddd; align-self: center; }
+
+  /* Per-token color intensity based on probability of being chosen */
+  .tok-gen {
+    color: #085041;
+  }
+
+  .btn-gen {
+    background: #fff;
+    border: 0.5px solid #bbb;
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #1a1a1a;
+  }
+  .btn-gen:hover { background: #f5f4f0; }
+  .btn-gen:active { transform: scale(0.98); }
+  .btn-reset {
+    background: transparent;
+    border: none;
+    font-size: 12px;
+    color: #777;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .error { font-size: 12px; color: #c0392b; margin-top: 4px; }
+
+  .step-log {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.8;
+    margin-top: 10px;
+    font-family: monospace;
+  }
+  .step-log .chosen { font-weight: 600; color: #085041; }
+
+  .prompt-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .prompt-row input[type=text] { width: 180px; }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #555;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-swatch { width: 16px; height: 16px; border-radius: 4px; display: inline-block; }
+
+  /* Mini bar chart inside tooltip */
+  .bar-wrap { display: flex; flex-direction: column; gap: 3px; }
+  .bar-row { display: flex; align-items: center; gap-6px; font-size: 11px; }
+
+  /* Tooltip */
+  .tok[data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222;
+    color: #fff;
+    font-size: 11px;
+    white-space: pre;
+    padding: 5px 8px;
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 10;
+    line-height: 1.6;
+    font-family: monospace;
+  }
+
+  /* Re-run many times summary */
+  .freq-table { border-collapse: collapse; margin-top: 8px; }
+  .freq-table th, .freq-table td {
+    border: 0.5px solid #ddd;
+    padding: 4px 10px;
+    font-size: 12px;
+    text-align: center;
+  }
+  .freq-table th { background: #f5f4f0; font-weight: 500; color: #555; }
+</style>
+</head>
+<body>
+
+<h2>LLM sampled token prediction</h2>
+
+<div class="section">
+  <h3>Transition probability table &nbsp;<span style="font-weight:400;font-size:12px;color:#777">p(column | row) — rows must sum to 1</span></h3>
+  <table class="prob-table" id="ptable">
+    <thead>
+      <tr>
+        <th style="text-align:left">ω<sub>n−1</sub> \ ω<sub>n</sub></th>
+        <th>A</th><th>B</th><th>C</th><th>D</th>
+        <th style="text-align:left;padding-left:12px">row sum</th>
+      </tr>
+    </thead>
+    <tbody id="ptbody"></tbody>
+  </table>
+  <div style="margin-top:10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <button class="btn-reset" onclick="normalizeRows()">Normalize all rows to sum to 1</button>
+    <button class="btn-reset" onclick="randomizeTable()">Randomize</button>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Prompt &amp; generation</h3>
+  <div class="prompt-row">
+    <label>Prompt (letters A–D):</label>
+    <input type="text" id="prompt-in" value="AB" maxlength="20"
+           placeholder="e.g. AB"
+           oninput="this.value=this.value.toUpperCase().replace(/[^ABCD]/g,'')">
+    <label style="margin-left:8px">Generate</label>
+    <input type="number" id="gen-len" value="10" min="1" max="100" style="width:64px">
+    <label>tokens</label>
+    <button class="btn-gen" onclick="generate()">Sample ↗</button>
+    <button class="btn-gen" onclick="generateMany()" style="margin-left:4px">Sample ×100 ↗</button>
+  </div>
+
+  <div id="err" class="error" style="display:none"></div>
+  <div class="token-stream" id="stream"></div>
+
+  <div class="legend" id="legend" style="display:none">
+    <div class="legend-item">
+      <span class="legend-swatch" style="background:#EEEDFE"></span>
+      <span>prompt token</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-swatch" style="background:#9FE1CB"></span>
+      <span>high-probability draw</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-swatch" style="background:#E1F5EE"></span>
+      <span>low-probability draw</span>
+    </div>
+  </div>
+
+  <div class="step-log" id="steplog"></div>
+</div>
+
+<div class="section" id="freq-section" style="display:none">
+  <h3>Empirical token frequencies over 100 runs &nbsp;<span style="font-weight:400;font-size:12px;color:#777">(each run: same prompt, same length)</span></h3>
+  <div id="freq-out"></div>
+</div>
+
+<script>
+const TOKENS = ['A','B','C','D'];
+const DEFAULT = [
+  [0.1, 0.5, 0.3, 0.1],
+  [0.2, 0.1, 0.4, 0.3],
+  [0.4, 0.2, 0.1, 0.3],
+  [0.3, 0.3, 0.2, 0.2]
+];
+let P = DEFAULT.map(r => [...r]);
+
+// Token background colors mapped to probability (low → high)
+function probColor(p) {
+  // interpolate from #E1F5EE (low) to #1D9E75 (high) in RGB
+  const lo = [225, 245, 238];
+  const hi = [29, 158, 117];
+  const r = Math.round(lo[0] + (hi[0]-lo[0])*p);
+  const g = Math.round(lo[1] + (hi[1]-lo[1])*p);
+  const b = Math.round(lo[2] + (hi[2]-lo[2])*p);
+  return `rgb(${r},${g},${b})`;
+}
+
+function textColor(p) {
+  return p > 0.55 ? '#fff' : '#085041';
+}
+
+function buildTable() {
+  const tb = document.getElementById('ptbody');
+  tb.innerHTML = '';
+  TOKENS.forEach((from, i) => {
+    const tr = document.createElement('tr');
+    let tds = `<td style="font-weight:500;background:#f5f4f0">${from}</td>`;
+    TOKENS.forEach((to, j) => {
+      tds += `<td><input type="number" min="0" max="1" step="0.01"
+        id="p${i}${j}" value="${P[i][j].toFixed(2)}"
+        oninput="updateP(${i},${j},this.value)"></td>`;
+    });
+    tds += `<td style="padding-left:12px"><span id="sum${i}" class="row-warning"></span></td>`;
+    tr.innerHTML = tds;
+    tb.appendChild(tr);
+  });
+  updateAllSums();
+}
+
+function updateP(i, j, v) {
+  P[i][j] = parseFloat(v) || 0;
+  updateSum(i);
+}
+
+function updateSum(i) {
+  const s = P[i].reduce((a, b) => a + b, 0);
+  const el = document.getElementById('sum' + i);
+  el.textContent = s.toFixed(3) + (Math.abs(s - 1) > 0.01 ? ' ✗' : ' ✓');
+  el.style.color = Math.abs(s - 1) > 0.01 ? '#c0392b' : '#27ae60';
+}
+
+function updateAllSums() { TOKENS.forEach((_, i) => updateSum(i)); }
+
+function normalizeRows() {
+  TOKENS.forEach((_, i) => {
+    const s = P[i].reduce((a, b) => a + b, 0);
+    if (s > 0) P[i] = P[i].map(v => v / s);
+  });
+  TOKENS.forEach((_, i) => TOKENS.forEach((_, j) => {
+    const el = document.getElementById('p' + i + j);
+    if (el) el.value = P[i][j].toFixed(3);
+  }));
+  updateAllSums();
+}
+
+function randomizeTable() {
+  TOKENS.forEach((_, i) => {
+    const r = TOKENS.map(() => Math.random());
+    const s = r.reduce((a, b) => a + b, 0);
+    P[i] = r.map(v => v / s);
+  });
+  TOKENS.forEach((_, i) => TOKENS.forEach((_, j) => {
+    const el = document.getElementById('p' + i + j);
+    if (el) el.value = P[i][j].toFixed(3);
+  }));
+  updateAllSums();
+}
+
+// Sample one token from a distribution (array of probs summing to 1)
+function sampleToken(probs) {
+  const u = Math.random();
+  let cum = 0;
+  for (let j = 0; j < probs.length; j++) {
+    cum += probs[j];
+    if (u < cum) return j;
+  }
+  return probs.length - 1;
+}
+
+function validate() {
+  const raw = document.getElementById('prompt-in').value.trim().toUpperCase();
+  const errEl = document.getElementById('err');
+  errEl.style.display = 'none';
+  if (!raw || raw.split('').some(c => !TOKENS.includes(c))) {
+    errEl.textContent = 'Prompt must be non-empty and contain only A, B, C, D.';
+    errEl.style.display = 'block';
+    return null;
+  }
+  const invalid = TOKENS.findIndex((_, i) => Math.abs(P[i].reduce((a, b) => a + b, 0) - 1) > 0.05);
+  if (invalid >= 0) {
+    errEl.textContent = `Row ${TOKENS[invalid]} does not sum to ~1. Please fix or use "Normalize".`;
+    errEl.style.display = 'block';
+    return null;
+  }
+  return raw;
+}
+
+function runOnce(prompt, n) {
+  // Returns array of {token, prob} for the generated part
+  let prev = prompt[prompt.length - 1];
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    const row = TOKENS.indexOf(prev);
+    const probs = P[row];
+    const j = sampleToken(probs);
+    result.push({ token: TOKENS[j], prob: probs[j], probs: [...probs] });
+    prev = TOKENS[j];
+  }
+  return result;
+}
+
+function generate() {
+  const raw = validate();
+  if (!raw) return;
+  const n = Math.max(1, Math.min(100, parseInt(document.getElementById('gen-len').value) || 10));
+
+  const stream = document.getElementById('stream');
+  const steplog = document.getElementById('steplog');
+  stream.innerHTML = '';
+  steplog.innerHTML = '';
+  document.getElementById('freq-section').style.display = 'none';
+
+  // Prompt tokens
+  raw.split('').forEach(c => {
+    const t = document.createElement('span');
+    t.className = 'tok tok-prompt';
+    t.textContent = c;
+    t.title = 'prompt token';
+    stream.appendChild(t);
+  });
+
+  const sep = document.createElement('span');
+  sep.className = 'tok-sep';
+  stream.appendChild(sep);
+
+  const steps = runOnce(raw, n);
+  const logs = [];
+  let prev = raw[raw.length - 1];
+
+  steps.forEach(({ token, prob, probs }, i) => {
+    const t = document.createElement('span');
+    t.className = 'tok tok-gen';
+    t.textContent = token;
+    t.style.background = probColor(prob);
+    t.style.color = textColor(prob);
+
+    // Build tooltip text
+    const bar = probs.map((p, j) => {
+      const bars = '█'.repeat(Math.round(p * 10));
+      const mark = TOKENS[j] === token ? ' ← sampled' : '';
+      return `${TOKENS[j]}: ${bars.padEnd(10,' ')} ${p.toFixed(3)}${mark}`;
+    }).join('\n');
+    t.setAttribute('data-tip', `step ${i+1}  |  prev: ${prev}\n${bar}`);
+
+    stream.appendChild(t);
+
+    const probStr = probs.map((p, j) => {
+      const s = `${TOKENS[j]}:${p.toFixed(3)}`;
+      return TOKENS[j] === token ? `<span class="chosen">[${s}]</span>` : s;
+    }).join('  ');
+    logs.push(`step ${String(i+1).padStart(2,' ')}: p(·|${prev}) = ${probStr}`);
+    prev = token;
+  });
+
+  document.getElementById('legend').style.display = 'flex';
+  steplog.innerHTML = logs.join('<br>');
+}
+
+function generateMany() {
+  const raw = validate();
+  if (!raw) return;
+  const n = Math.max(1, Math.min(100, parseInt(document.getElementById('gen-len').value) || 10));
+
+  // Run 100 times, collect frequency of each token at each position
+  const RUNS = 100;
+  // counts[pos][tokenIdx]
+  const counts = Array.from({length: n}, () => [0,0,0,0]);
+  for (let r = 0; r < RUNS; r++) {
+    const steps = runOnce(raw, n);
+    steps.forEach(({token}, i) => {
+      counts[i][TOKENS.indexOf(token)]++;
+    });
+  }
+
+  // Also show one sample run
+  generate();
+
+  // Build frequency table
+  const freqOut = document.getElementById('freq-out');
+  let html = `<table class="freq-table"><thead><tr>
+    <th>step</th><th>prev</th>
+    <th>A</th><th>B</th><th>C</th><th>D</th>
+  </tr></thead><tbody>`;
+
+  // Reconstruct prev tokens using mode for display (just use prompt end + most frequent)
+  // We'll track theoretical prev using the mode at each step
+  let displayPrev = raw[raw.length - 1];
+  for (let i = 0; i < n; i++) {
+    const row = counts[i];
+    const total = row.reduce((a,b)=>a+b,0);
+    const cells = row.map((c,j) => {
+      const freq = (c/total*100).toFixed(1);
+      const p = P[TOKENS.indexOf(displayPrev)][j];
+      return `<td title="theoretical p=${p.toFixed(3)}">${freq}%</td>`;
+    }).join('');
+    // most frequent token becomes next displayPrev
+    const bestJ = row.indexOf(Math.max(...row));
+    html += `<tr><td>${i+1}</td><td>${displayPrev}</td>${cells}</tr>`;
+    displayPrev = TOKENS[bestJ];
+  }
+  html += '</tbody></table>';
+  html += `<p style="font-size:11px;color:#777;margin-top:6px">Hover cells to see theoretical p. Columns are empirical frequencies over ${RUNS} runs.</p>`;
+
+  freqOut.innerHTML = html;
+  document.getElementById('freq-section').style.display = 'block';
+}
+
+buildTable();
+</script>
+</body>
+</html>
