@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytical Latency: Visualizing Probabilities</title>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; background: #eee; padding: 15px; border-radius: 8px; }
+        .input-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; font-size: 0.75rem; color: #666; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; }
+        canvas { width: 100%; height: auto; border: 1px solid #ddd; background: #fff; margin-bottom: 5px; display: block; }
+        .results-box { display: flex; gap: 20px; margin-bottom: 20px; }
+        .card { flex: 1; padding: 15px; background: #f9f9f9; border-left: 5px solid #007bff; border-radius: 4px; }
+        h3 { margin-top: 0; font-size: 1rem; color: #555; }
+        .plot-desc { font-size: 0.85rem; color: #666; margin-bottom: 20px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Network Latency Analysis Using the Lognormal Distribution</h2>
+    
+    <div class="controls">
+        <div class="input-group"><label>$\mu$ (Log Mean)</label><input type="number" id="mu" value="2.8" step="0.1"></div>
+        <div class="input-group"><label>$\sigma$ (Log StdDev)</label><input type="number" id="sigma" value="0.5" step="0.1"></div>
+        <div class="input-group"><label>Interval Start ($a$)</label><input type="number" id="intA" value="12"></div>
+        <div class="input-group"><label>Interval End ($b$)</label><input type="number" id="intB" value="22"></div>
+        <div class="input-group"><label>Tail Threshold ($T$)</label><input type="number" id="threshold" value="45"></div>
+    </div>
+
+    <div class="results-box">
+        <div class="card">
+            <h3>Interval Probability (Blue)</h3>
+            <div id="outPDF">Calculating...</div>
+        </div>
+        <div class="card" style="border-left-color: #d9534f;">
+            <h3>Tail Risk (Red)</h3>
+            <div id="outTail">Calculating...</div>
+        </div>
+    </div>
+
+    <h3>1. Probability Density Function (PDF) of Latency [ms]</h3>
+    <p class="plot-desc">Reading: Probability is the area under the curve.</p>
+    <canvas id="pdfCanvas" width="1000" height="350"></canvas>
+    <p>$$f(x) = \frac{1}{x\sigma\sqrt{2\pi}} \exp\left( -\frac{(\ln x - \mu)^2}{2\sigma^2} \right)$$</p>
+
+    <h3>2. Cumulative Distribution Function (CDF)</h3>
+    <p class="plot-desc">Reading: Probability is the vertical distance $\Delta y$.</p>
+    <canvas id="cdfCanvas" width="1000" height="350"></canvas>
+    <p>$$F(x) = \Phi\left( \frac{\ln x - \mu}{\sigma} \right)$$</p>
+
+    <h3>3. Quantile Function (Inverse CDF)</h3>
+    <p class="plot-desc">Reading: Probability is represented on the x-axis ($p$), mapping to values on the y-axis.</p>
+    <canvas id="qCanvas" width="1000" height="450"></canvas>
+    <p>$$Q(p) = \exp(\mu + \sigma \Phi^{-1}(p))$$</p>
+</div>
+
+<script>
+    const phi = (x) => 0.5 * (1 + erf(x / Math.sqrt(2)));
+    function erf(x) {
+        const a = [0.254829592, -0.284496736, 1.421413741, -1.453152027, 1.061405429];
+        const t = 1.0 / (1.0 + 0.3275911 * Math.abs(x));
+        const y = 1.0 - (((((a[4]*t + a[3])*t + a[2])*t + a[1])*t + a[0])*t) * Math.exp(-x*x);
+        return x >= 0 ? y : -y;
+    }
+    const invPhi = (p) => {
+        let low = -8, high = 8;
+        for(let i=0; i<30; i++){
+            let mid = (low+high)/2;
+            if(phi(mid) < p) low = mid; else high = mid;
+        }
+        return low;
+    };
+
+    const getPDF = (x, mu, sigma) => x <= 0 ? 0 : (1/(x*sigma*Math.sqrt(2*Math.PI))) * Math.exp(-Math.pow(Math.log(x)-mu, 2)/(2*sigma**2));
+    const getCDF = (x, mu, sigma) => x <= 0 ? 0 : phi((Math.log(x) - mu) / sigma);
+    const getQ = (p, mu, sigma) => Math.exp(mu + sigma * invPhi(p));
+
+    function draw() {
+        const mu = parseFloat(document.getElementById('mu').value);
+        const sigma = parseFloat(document.getElementById('sigma').value);
+        const a = parseFloat(document.getElementById('intA').value);
+        const b = parseFloat(document.getElementById('intB').value);
+        const t = parseFloat(document.getElementById('threshold').value);
+        const maxX = Math.max(b, t, Math.exp(mu+sigma)) * 1.5;
+
+        // Textual Results
+        const pA = getCDF(a, mu, sigma), pB = getCDF(b, mu, sigma), pT = getCDF(t, mu, sigma);
+        document.getElementById('outPDF').innerHTML = `$P(${a} < X < ${b}) = F(${b}) - F(${a}) = ${((pB-pA)*100).toFixed(2)}\\%$`;
+        document.getElementById('outTail').innerHTML = `$P(X > ${t}) = 1 - F(${t}) = ${((1-pT)*100).toFixed(4)}\\%$`;
+        if(window.MathJax) MathJax.typeset();
+
+        const colors = { interval: 'rgba(0, 123, 255, 0.3)', tail: 'rgba(217, 83, 79, 0.4)', blue: '#007bff', red: '#d9534f' };
+
+        // 1. PDF Canvas
+        const pdfCtx = document.getElementById('pdfCanvas').getContext('2d');
+        const pW = 1000, pH = 350, pad = 50;
+        pdfCtx.clearRect(0,0,pW,pH);
+        const scaleY_pdf = (pH-2*pad)/getPDF(Math.exp(mu-sigma**2), mu, sigma);
+
+        const shadePDF = (start, end, color) => {
+            pdfCtx.fillStyle = color; pdfCtx.beginPath();
+            for(let x=start; x<=end; x += maxX/200) {
+                let px = pad + (x/maxX)*(pW-2*pad), py = pH-pad - getPDF(x, mu, sigma)*scaleY_pdf;
+                if(x===start) pdfCtx.moveTo(px, pH-pad); pdfCtx.lineTo(px, py);
+            }
+            pdfCtx.lineTo(pad + (end/maxX)*(pW-2*pad), pH-pad); pdfCtx.fill();
+        };
+        shadePDF(a, b, colors.interval); shadePDF(t, maxX, colors.tail);
+
+        pdfCtx.strokeStyle = colors.blue; pdfCtx.lineWidth = 2; pdfCtx.beginPath();
+        for(let i=0; i<=200; i++) {
+            let x = (i/200)*maxX;
+            let px = pad + (i/200)*(pW-2*pad), py = pH-pad - getPDF(x, mu, sigma)*scaleY_pdf;
+            if(i===0) pdfCtx.moveTo(px, py); else pdfCtx.lineTo(px, py);
+        }
+        pdfCtx.stroke();
+
+        // 2. CDF Canvas
+        const cdfCtx = document.getElementById('cdfCanvas').getContext('2d');
+        cdfCtx.clearRect(0,0,pW,pH);
+        const scaleY_cdf = (pH-2*pad);
+
+        const drawCDFRange = (xVal, color) => {
+            let px = pad + (xVal/maxX)*(pW-2*pad), py = pH-pad - getCDF(xVal, mu, sigma)*scaleY_cdf;
+            cdfCtx.strokeStyle = color; cdfCtx.setLineDash([5,5]);
+            cdfCtx.beginPath(); cdfCtx.moveTo(px, pH-pad); cdfCtx.lineTo(px, py); cdfCtx.stroke(); cdfCtx.setLineDash([]);
+        };
+        drawCDFRange(a, colors.blue); drawCDFRange(b, colors.blue); drawCDFRange(t, colors.red);
+
+        cdfCtx.strokeStyle = '#28a745'; cdfCtx.lineWidth = 2; cdfCtx.beginPath();
+        for(let i=0; i<=200; i++) {
+            let x = (i/200)*maxX;
+            let px = pad + (i/200)*(pW-2*pad), py = pH-pad - getCDF(x, mu, sigma)*scaleY_cdf;
+            if(i===0) cdfCtx.moveTo(px, py); else cdfCtx.lineTo(px, py);
+        }
+        cdfCtx.stroke();
+
+        // 3. Quantile Canvas (Updated)
+        const qCtx = document.getElementById('qCanvas').getContext('2d');
+        const qH = 450;
+        qCtx.clearRect(0,0,pW,qH);
+        const scaleY_q = (qH-2*pad)/maxX;
+
+        const drawQProjection = (pVal, xVal, color, labelY) => {
+            let px = pad + pVal*(pW-2*pad);
+            let py = qH - pad - xVal*scaleY_q;
+            
+            qCtx.strokeStyle = color;
+            qCtx.setLineDash([4,4]);
+            qCtx.beginPath();
+            qCtx.moveTo(px, qH-pad);
+            qCtx.lineTo(px, py);
+            qCtx.lineTo(pad, py);
+            qCtx.stroke();
+            qCtx.setLineDash([]);
+            
+            qCtx.fillStyle = color;
+            qCtx.font = "bold 12px sans-serif";
+            qCtx.textAlign = "center";
+            qCtx.fillText(`p=${pVal.toFixed(3)}`, px, qH - pad + 15);
+            qCtx.textAlign = "right";
+            qCtx.fillText(`${labelY}=${xVal}ms`, pad - 5, py + 4);
+        };
+
+        drawQProjection(pA, a, colors.blue, 'a');
+        drawQProjection(pB, b, colors.blue, 'b');
+        drawQProjection(pT, t, colors.red, 'T');
+
+        qCtx.strokeStyle = '#6f42c1'; qCtx.lineWidth = 2; qCtx.beginPath();
+        for(let i=0; i<=200; i++) {
+            let p = (i/200)*0.99;
+            let px = pad + (i/200)*(pW-2*pad), py = qH-pad - getQ(p, mu, sigma)*scaleY_q;
+            if(i===0) qCtx.moveTo(px, py); else qCtx.lineTo(px, py);
+        }
+        qCtx.stroke();
+        
+        // Axes for Quantile
+        qCtx.strokeStyle = '#333'; qCtx.lineWidth = 1;
+        qCtx.beginPath(); qCtx.moveTo(pad, pad); qCtx.lineTo(pad, qH-pad); qCtx.lineTo(pW-pad, qH-pad); qCtx.stroke();
+    }
+
+    window.onload = () => {
+        document.querySelectorAll('input').forEach(i => i.addEventListener('input', draw));
+        draw();
+    };
+</script>
+
+</body>
+</html>
+
