@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Density Transformation: CPU Scaling</title>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f8f9fa; padding: 20px; line-height: 1.6; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .math-box { background: #eef2ff; border-left: 5px solid #4f46e5; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .visual-area { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
+        canvas { width: 100%; height: 300px; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
+        h1 { color: #1e293b; margin-top: 0; }
+        h3 { text-align: center; color: #475569; margin-bottom: 5px; font-size: 1rem; }
+        .desc { font-size: 0.95rem; color: #334155; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Density Transformation Formula</h1>
+    <p class="desc">
+        In system simulation, we often generate a simple <strong>Uniform</strong> random number $X \sim U(0,1)$ and transform it to follow a target distribution $Y = g(X)$.
+    </p>
+
+    <div class="math-box">
+        <h3>The Transformation: $Y = X^2$</h3>
+        <p>If $X$ is uniform on $[0,1]$, then $f_X(x) = 1$. Let $g(x) = x^2$. To find $f_Y(y)$:</p>
+        <ol>
+            <li>Inverse function: $x = g^{-1}(y) = \sqrt{y}$</li>
+            <li>Derivative: $\frac{dx}{dy} = \frac{1}{2\sqrt{y}}$</li>
+            <li>Result: $$f_Y(y) = 1 \cdot \left| \frac{1}{2\sqrt{y}} \right| = \frac{1}{2\sqrt{y}}$$</li>
+        </ol>
+    </div>
+
+    <div class="visual-area">
+        <div>
+            <h3>Input: $f_X(x)$ (Uniform Load)</h3>
+            <canvas id="canvasX" width="800" height="600"></canvas>
+            <p class="desc">Raw CPU task utilization (Input).</p>
+        </div>
+        <div>
+            <h3>Output: $f_Y(y)$ (Transformed)</h3>
+            <canvas id="canvasY" width="800" height="600"></canvas>
+            <p class="desc">Required CPU Frequency (Output).</p>
+        </div>
+    </div>
+
+    <div style="margin-top: 20px; text-align: center;">
+        <button onclick="simulate()" style="padding: 10px 20px; background: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+            Generate 5,000 Samples
+        </button>
+    </div>
+</div>
+
+<script>
+    function drawBase(ctx, w, h, pad) {
+        ctx.clearRect(0,0,w,h);
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pad, pad); ctx.lineTo(pad, h-pad); ctx.lineTo(w-pad, h-pad);
+        ctx.stroke();
+    }
+
+    function simulate() {
+        const samples = 5000;
+        const binsX = new Array(50).fill(0);
+        const binsY = new Array(50).fill(0);
+
+        for(let i=0; i<samples; i++) {
+            let x = Math.random(); // Uniform X
+            let y = x * x;         // Transformed Y
+            
+            binsX[Math.floor(x * 50)]++;
+            binsY[Math.floor(y * 50)]++;
+        }
+
+        renderChart('canvasX', binsX, samples, 'uniform');
+        renderChart('canvasY', binsY, samples, 'transformed');
+    }
+
+    function renderChart(id, bins, total, type) {
+        const canvas = document.getElementById(id);
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width, h = canvas.height, pad = 80;
+        
+        drawBase(ctx, w, h, pad);
+        const binWidth = (w - 2*pad) / bins.length;
+        const maxBin = Math.max(...bins);
+        
+        // Draw Histogram
+        ctx.fillStyle = type === 'uniform' ? '#94a3b8' : '#818cf8';
+        bins.forEach((count, i) => {
+            const barH = (count / maxBin) * (h - 2*pad);
+            ctx.fillRect(pad + i * binWidth, h - pad - barH, binWidth - 1, barH);
+        });
+
+        // Draw Theoretical Density Curve
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        for(let i=0; i < (w - 2*pad); i++) {
+            let xPhys = i / (w - 2*pad);
+            let yDensity;
+            
+            if(type === 'uniform') {
+                yDensity = 1; 
+            } else {
+                // f_Y(y) = 1 / (2 * sqrt(y))
+                yDensity = 1 / (2 * Math.sqrt(Math.max(xPhys, 0.01)));
+            }
+            
+            // Scaling density to fit chart
+            let plotY = h - pad - (yDensity * (h - 2*pad) * 0.4); 
+            if(type === 'uniform') plotY = h - pad - (h - 2*pad) * 0.5;
+
+            if(i === 0) ctx.moveTo(pad + i, plotY);
+            else ctx.lineTo(pad + i, plotY);
+        }
+        ctx.stroke();
+    }
+
+    window.onload = simulate;
+</script>
+
+</body>
+</html>
+
