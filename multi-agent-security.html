@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Safety Analysis: Guards & Hallucinations</title>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; background: #f0f2f5; color: #1a1a1a; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .math-section { background: #fff; border-left: 5px solid #007bff; padding: 20px; margin: 20px 0; border-radius: 4px; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; background: #e9ecef; padding: 20px; border-radius: 10px; margin: 20px 0; }
+        .input-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; font-size: 0.85rem; margin-bottom: 5px; }
+        input { padding: 8px; border: 1px solid #ced4da; border-radius: 4px; }
+        .charts { display: grid; grid-template-columns: 1fr; gap: 30px; margin-top: 30px; }
+        @media (min-width: 800px) { .charts { grid-template-columns: 1fr 1fr; } }
+        canvas { background: white; border: 1px solid #ddd; border-radius: 8px; width: 100%; height: 300px; }
+        .result-panel { background: #d1e7dd; padding: 20px; border-radius: 8px; border: 1px solid #badbcc; margin-top: 20px; min-height: 80px; }
+        h3 { font-size: 1rem; text-align: center; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Security Analysis: AI Guard Redundancy</h1>
+    
+    <p>This model evaluates the probability of a <strong>Critical System Failure</strong> ($p^*$) where a Work Agent hallucinates malicious code and no Guard Agent detects it.</p>
+
+    <div class="math-section">
+        <h2>Mathematical Derivation</h2>
+        <p>1. Probability at least one of $n$ Work Agents is malicious: $P_M = 1 - (1 - p)^n$.</p>
+        <p>2. Probability $k$ Guards all fail to detect it: $P_E = (1 - q)^k$.</p>
+        <p>3. Total system failure probability: $$p^* = [1 - (1 - p)^n] \cdot (1 - q)^k$$</p>
+        <p>4. Required Guards $k$ to ensure $p^* < p_t$: $$k > \frac{\ln(p_t) - \ln(1 - (1 - p)^n)}{\ln(1 - q)}$$</p>
+    </div>
+
+    <div class="controls">
+        <div class="input-group"><label>Work Agents ($n$)</label><input type="number" id="agentsN" value="10" min="1"></div>
+        <div class="input-group"><label>Malice Prob ($p$)</label><input type="number" id="probP" value="0.05" step="0.01" min="0.001" max="1"></div>
+        <div class="input-group"><label>Guard Accuracy ($q$)</label><input type="number" id="probQ" value="0.6" step="0.01" min="0.01" max="0.99"></div>
+        <div class="input-group"><label>Safety Target ($p_t$)</label><input type="number" id="targetPt" value="0.01" step="0.001" min="0.00001"></div>
+    </div>
+
+    <div id="summary" class="result-panel"></div>
+
+    <div class="charts">
+        <div>
+            <h3>$p^*$ vs. Number of Guards ($k$)</h3>
+            <canvas id="chartK" width="800" height="500"></canvas>
+        </div>
+        <div>
+            <h3>$p^*$ vs. Number of Work Agents ($n$)</h3>
+            <canvas id="chartN" width="800" height="500"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    function calculate() {
+        const n = parseInt(document.getElementById('agentsN').value) || 1;
+        const p = parseFloat(document.getElementById('probP').value) || 0.01;
+        const q = parseFloat(document.getElementById('probQ').value) || 0.5;
+        const pt = parseFloat(document.getElementById('targetPt').value) || 0.01;
+
+        const p_m = 1 - Math.pow(1 - p, n);
+        let k_req = 0;
+        if (pt < p_m) {
+            k_req = Math.ceil(Math.log(pt / p_m) / Math.log(1 - q));
+        }
+
+        const p_star = p_m * Math.pow(1 - q, k_req);
+
+        // Update Text and Trigger MathJax
+        const summary = document.getElementById('summary');
+        summary.innerHTML = `
+            To reach $p_t = $ ${pt}, you need at least ${k_req} Guards. <br>
+            Current failure probability $p^*$ is approx. ${p_star.toExponential(3)}.
+        `;
+        if (window.MathJax) MathJax.typesetPromise([summary]);
+
+        drawKChart(n, p, q, pt);
+        drawNChart(p, q, k_req, pt);
+    }
+
+    function setupCanvas(id) {
+        const canvas = document.getElementById(id);
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width, h = canvas.height, pad = 80;
+        ctx.clearRect(0, 0, w, h);
+        
+        // Axes
+        ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pad, pad); ctx.lineTo(pad, h - pad); ctx.lineTo(w - pad, h - pad);
+        ctx.stroke();
+
+        // Labels
+        ctx.fillStyle = '#333'; ctx.font = '20px sans-serif';
+        ctx.fillText("Failure Prob (p*)", 10, pad - 10);
+        return {ctx, w, h, pad};
+    }
+
+    function drawKChart(n, p, q, pt) {
+        const {ctx, w, h, pad} = setupCanvas('chartK');
+        const p_m = 1 - Math.pow(1 - p, n);
+        const kMax = 15;
+
+        ctx.strokeStyle = '#007bff'; ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let k = 0; k <= kMax; k++) {
+            let p_star = p_m * Math.pow(1 - q, k);
+            let x = pad + (k / kMax) * (w - 2 * pad);
+            let y = h - pad - (p_star / p_m) * (h - 2 * pad);
+            if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            
+            // Labels for k values
+            if(k % 2 === 0) ctx.fillText(k, x - 5, h - pad + 30);
+        }
+        ctx.stroke();
+
+        // Target Line
+        let ty = h - pad - (pt / p_m) * (h - 2 * pad);
+        if (ty < pad) ty = pad;
+        ctx.setLineDash([5, 5]); ctx.strokeStyle = 'red';
+        ctx.beginPath(); ctx.moveTo(pad, ty); ctx.lineTo(w - pad, ty); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillText("Target pt", w - pad + 5, ty);
+    }
+
+    function drawNChart(p, q, k, pt) {
+        const {ctx, w, h, pad} = setupCanvas('chartN');
+        const nMax = 50;
+        const p_e = Math.pow(1 - q, k);
+
+        ctx.strokeStyle = '#6f42c1'; ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let n = 1; n <= nMax; n++) {
+            let p_m = 1 - Math.pow(1 - p, n);
+            let p_star = p_m * p_e;
+            let x = pad + (n / nMax) * (w - 2 * pad);
+            let y = h - pad - (p_star / p_e) * (h - 2 * pad); // Scaled by detection failure
+            if (n === 1) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+
+            if(n % 10 === 0) ctx.fillText(n, x - 10, h - pad + 30);
+        }
+        ctx.stroke();
+        ctx.fillText("Work Agents (n)", w/2, h - 10);
+    }
+
+    document.querySelectorAll('input').forEach(i => i.addEventListener('input', calculate));
+    window.onload = calculate;
+</script>
+
+</body>
+</html>
+
