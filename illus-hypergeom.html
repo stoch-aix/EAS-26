@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urn Sampling Simulation</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 20px; background: #f4f4f9; }
+        .container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; background: #eee; padding: 15px; border-radius: 8px; }
+        .control-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; font-size: 0.9rem; margin-bottom: 5px; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        #urn-container { position: relative; width: 100%; height: 250px; border: 3px solid #555; border-top: none; border-radius: 0 0 50px 50px; margin: 20px 0; overflow: hidden; background: #fff; }
+        .ball { position: absolute; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        .red { background: radial-gradient(circle at 10px 10px, #ff4d4d, #990000); }
+        .blue { background: radial-gradient(circle at 10px 10px, #4d94ff, #003399); }
+        
+        #sample-area { min-height: 50px; border: 2px dashed #aaa; border-radius: 8px; padding: 10px; display: flex; gap: 10px; justify-content: center; align-items: center; margin-bottom: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background-color: #f8f8f8; }
+        button { padding: 10px 20px; background: #2ecc71; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #27ae60; }
+        button:disabled { background: #ccc; }
+        .math { font-style: italic; color: #c0392b; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Urn Sampling Simulator</h2>
+    <p>This tool simulates drawing <strong>n</strong> balls from an urn of <strong>N</strong> balls (R red, B blue) <strong>without replacement</strong>.</p>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Total Balls (N)</label>
+            <input type="number" id="inputN" value="20" min="1" max="50">
+        </div>
+        <div class="control-group">
+            <label>Red Balls (R)</label>
+            <input type="number" id="inputR" value="8" min="0">
+        </div>
+        <div class="control-group">
+            <label>Sample Size (n)</label>
+            <input type="number" id="inputn" value="5" min="1">
+        </div>
+        <div class="control-group">
+            <label>Target Red (r)</label>
+            <input type="number" id="inputr" value="2" min="0">
+        </div>
+        <div class="control-group" style="justify-content: flex-end;">
+            <button onclick="startSimulation()" id="drawBtn">Start Draw</button>
+        </div>
+    </div>
+
+    <div id="urn-container"></div>
+    
+    <p><strong>Drawn Sample:</strong></p>
+    <div id="sample-area"></div>
+
+    <div id="results">
+        <h3>Probability Calculation</h3>
+        <p id="formula-display">The probability follows the Hypergeometric distribution.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>N</th>
+                    <th>R</th>
+                    <th>B (N-R)</th>
+                    <th>Sample size (n)</th>
+                    <th>Target Red (r)</th>
+                    <th>Probability P(X=r)</th>
+                </tr>
+            </thead>
+            <tbody id="results-table-body">
+                <!-- Results injected here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function combinations(n, k) {
+        if (k < 0 || k > n) return 0;
+        if (k === 0 || k === n) return 1;
+        if (k > n / 2) k = n - k;
+        let res = 1;
+        for (let i = 1; i <= k; i++) {
+            res = res * (n - i + 1) / i;
+        }
+        return res;
+    }
+
+    function calculateHypergeometric(N, R, n, r) {
+        const B = N - R;
+        if (r > R || (n - r) > B || r > n) return 0;
+        
+        const waysRed = combinations(R, r);
+        const waysBlue = combinations(B, n - r);
+        const totalWays = combinations(N, n);
+        
+        return (waysRed * waysBlue) / totalWays;
+    }
+
+    let balls = [];
+    function setupUrn() {
+        const N = parseInt(document.getElementById('inputN').value);
+        const R = parseInt(document.getElementById('inputR').value);
+        const urn = document.getElementById('urn-container');
+        const sampleArea = document.getElementById('sample-area');
+        urn.innerHTML = '';
+        sampleArea.innerHTML = '';
+        balls = [];
+
+        for (let i = 0; i < N; i++) {
+            const ball = document.createElement('div');
+            ball.className = 'ball ' + (i < R ? 'red' : 'blue');
+            ball.id = 'ball-' + i;
+            ball.style.left = Math.random() * (urn.clientWidth - 40) + 5 + 'px';
+            ball.style.top = Math.random() * (urn.clientHeight - 40) + 5 + 'px';
+            urn.appendChild(ball);
+            balls.push({ id: i, type: i < R ? 'red' : 'blue', element: ball });
+        }
+    }
+
+    async function startSimulation() {
+        const N = parseInt(document.getElementById('inputN').value);
+        const R = parseInt(document.getElementById('inputR').value);
+        const n = parseInt(document.getElementById('inputn').value);
+        const rTarget = parseInt(document.getElementById('inputr').value);
+        const btn = document.getElementById('drawBtn');
+
+        if (R > N || n > N || rTarget > n) {
+            alert("Invalid parameters. Ensure R ≤ N, n ≤ N, and r ≤ n.");
+            return;
+        }
+
+        btn.disabled = true;
+        setupUrn();
+        
+        let shuffled = [...balls].sort(() => Math.random() - 0.5);
+        let sample = shuffled.slice(0, n);
+        
+        for (let i = 0; i < sample.length; i++) {
+            await new Promise(r => setTimeout(r, 600));
+            const ballObj = sample[i];
+            const el = ballObj.element;
+            const rect = document.getElementById('sample-area').getBoundingClientRect();
+            const urnRect = document.getElementById('urn-container').getBoundingClientRect();
+
+            el.style.top = '-100px'; // Move out of urn
+            el.style.opacity = '0';
+            
+            setTimeout(() => {
+                const clone = el.cloneNode(true);
+                clone.style.position = 'relative';
+                clone.style.top = '0';
+                clone.style.left = '0';
+                clone.style.opacity = '1';
+                document.getElementById('sample-area').appendChild(clone);
+            }, 500);
+        }
+
+        const prob = calculateHypergeometric(N, R, n, rTarget);
+        updateTable(N, R, n, rTarget, prob);
+        btn.disabled = false;
+    }
+
+    function updateTable(N, R, n, r, prob) {
+        const tbody = document.getElementById('results-table-body');
+        const row = tbody.insertRow(0);
+        row.innerHTML = `
+            <td>${N}</td>
+            <td>${R}</td>
+            <td>${N-R}</td>
+            <td>${n}</td>
+            <td>${r}</td>
+            <td><strong>${(prob * 100).toFixed(4)}%</strong></td>
+        `;
+    }
+
+    // Initial setup
+    window.onload = setupUrn;
+</script>
+
+</body>
+</html>
+
