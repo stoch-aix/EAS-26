@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Network Pulse | Multi-Color Poisson Trace</title>
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-red: #ff0055;
+            --bg-dark: #0d1117;
+            --panel-bg: #161b22;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: #e6edf3;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .header {
+            padding: 10px 30px;
+            background: var(--panel-bg);
+            border-bottom: 2px solid var(--neon-blue);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .main {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            flex: 1;
+            padding: 20px;
+            gap: 20px;
+        }
+        .sidebar {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .oscilloscope {
+            background: #000;
+            border: 2px solid #30363d;
+            border-radius: 8px;
+            position: relative;
+            height: 450px;
+            box-shadow: inset 0 0 30px rgba(0, 242, 255, 0.1);
+        }
+        canvas#network-canvas { width: 100%; height: 100%; }
+        .stat-card {
+            background: #0d1117;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid var(--neon-blue);
+        }
+        .stat-label { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; }
+        .stat-value { font-size: 1.6rem; font-weight: bold; color: var(--neon-blue); }
+        .btn-start { background: var(--neon-blue); color: #000; font-weight: bold; padding: 15px; border-radius: 6px; border:none; cursor:pointer; }
+        .slider-group input { width: 100%; accent-color: var(--neon-blue); }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1 style="margin:0; font-size: 1.2rem; color: var(--neon-blue);">NETWORK ANALYZER</h1>
+    <div style="font-size: 1.2rem;">$$ \hat{\lambda} = \frac{N(t)}{t} $$</div>
+</div>
+
+<div class="main">
+    <div class="sidebar">
+        <div class="slider-group">
+            <!-- MISTAKE 1 FIXED: Explicit container for LaTeX rendering -->
+            <div id="lambda-container">Input $\lambda$: $1.0$ ev/s</div>
+            <input type="range" id="lambda-slider" min="0.2" max="5.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Events $N(t)$</div>
+            <div id="count-ui" class="stat-value" style="color:var(--neon-red)">0</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-label">Estimated $\hat{\lambda}$</div>
+            <div id="est-lambda-ui" class="stat-value">0.000</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Elapsed Time</div>
+            <div id="time-ui" class="stat-value">0.0s</div>
+        </div>
+
+        <button id="toggle-btn" class="btn-start">START MONITOR</button>
+        <button onclick="location.reload()" style="background:#333; color:white; border:none; padding:8px; cursor:pointer; border-radius:4px; margin-top:10px;">RESET</button>
+    </div>
+
+    <div class="oscilloscope">
+        <canvas id="network-canvas"></canvas>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('network-canvas');
+    const ctx = canvas.getContext('2d');
+    const slider = document.getElementById('lambda-slider');
+    const toggleBtn = document.getElementById('toggle-btn');
+    const lambdaContainer = document.getElementById('lambda-container');
+
+    let isRunning = false;
+    let lambda = 1.0;
+    let eventCount = 0;
+    let totalTime = 0;
+    let lastTimestamp = 0;
+    
+    // History stores objects to keep state persistent as it scrolls
+    let history = Array(250).fill(0).map(() => ({ val: 90, isDrop: false })); 
+    let starMarkers = []; 
+    let dropActive = false;
+
+    function getInterarrival() {
+        return -Math.log(Math.random()) / lambda;
+    }
+
+    function spawnEvent() {
+        if (!isRunning) return;
+        setTimeout(() => {
+            if (isRunning) {
+                eventCount++;
+                dropActive = true;
+                starMarkers.push(history.length - 1);
+                setTimeout(() => { dropActive = false; }, 50);
+                spawnEvent();
+            }
+        }, getInterarrival() * 1000);
+    }
+
+    function render(now) {
+        if (!isRunning) return;
+
+        if (lastTimestamp === 0) lastTimestamp = now;
+        const dt = (now - lastTimestamp) / 1000;
+        totalTime += dt;
+        lastTimestamp = now;
+
+        // Update History
+        let noise = (Math.random() - 0.5) * 4;
+        let currentVal = dropActive ? 8 : (85 + noise);
+        
+        history.shift();
+        history.push({ val: currentVal, isDrop: dropActive });
+        
+        starMarkers = starMarkers.map(p => p - 1).filter(p => p > -10);
+
+        // UI Updates
+        document.getElementById('time-ui').innerText = totalTime.toFixed(1) + 's';
+        document.getElementById('count-ui').innerText = eventCount;
+        if (totalTime > 0.01) {
+            document.getElementById('est-lambda-ui').innerText = (eventCount / totalTime).toFixed(3);
+        }
+
+        // Canvas Drawing
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+        const step = canvas.width / (history.length - 1);
+        const getY = (v) => canvas.height - (v / 100 * (canvas.height - 100)) - 60;
+
+        // Draw stars at the bottom
+        ctx.fillStyle = "#ff0055";
+        ctx.font = "24px serif";
+        starMarkers.forEach(p => {
+            ctx.fillText("★", p * step - 10, canvas.height - 20);
+        });
+
+        // MISTAKE 2 FIXED: Segmented coloring
+        for (let i = 0; i < history.length - 1; i++) {
+            ctx.beginPath();
+            ctx.lineWidth = 3;
+            ctx.moveTo(i * step, getY(history[i].val));
+            ctx.lineTo((i + 1) * step, getY(history[i+1].val));
+            
+            // The segment color is determined by the state of its points
+            if (history[i].isDrop || history[i+1].isDrop) {
+                ctx.strokeStyle = "#ff0055"; // Red for event
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = "#ff0055";
+            } else {
+                ctx.strokeStyle = "#00f2ff"; // Blue for ok
+                ctx.shadowBlur = 0;
+            }
+            ctx.stroke();
+        }
+
+        requestAnimationFrame(render);
+    }
+
+    toggleBtn.onclick = () => {
+        if (!isRunning) {
+            isRunning = true;
+            toggleBtn.innerText = "PAUSE";
+            lastTimestamp = performance.now();
+            spawnEvent();
+            requestAnimationFrame(render);
+        } else {
+            isRunning = false;
+            toggleBtn.innerText = "RESUME";
+            lastTimestamp = 0;
+        }
+    };
+
+    slider.oninput = (e) => {
+        lambda = parseFloat(e.target.value);
+        // Refresh LaTeX label
+        lambdaContainer.innerHTML = `Input $\\lambda$: $${lambda.toFixed(1)}$ ev/s`;
+        if (window.MathJax && window.MathJax.typeset) {
+            window.MathJax.typeset([lambdaContainer]);
+        }
+    };
+</script>
+</body>
+</html>
+
