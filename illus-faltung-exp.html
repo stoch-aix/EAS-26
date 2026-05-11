@@ -74,8 +74,8 @@
             desc: "1. State the convolution formula for the density of $Z = X + Y$ (for $z > 0$):",
             correct: "$f_Z(z) = \\int_{0}^{z} f_X(x) f_Y(z-x) dx$",
             wrong: "$f_Z(z) = \\int_{-\\infty}^{\\infty} f_X(x) f_Y(x) dx$",
-            error: "For non-negative variables, $f_X(x)=0$ if $x<0$ and $f_Y(z-x)=0$ if $x>z$. Thus, the non-zero range is only $x \\in [0, z]$.",
-            proof: "$f_Z(z) = \\int_{0}^{z} f_X(x) f_Y(z-x) dx \\quad (\\text{$ f_Y(z-x)>0 \\Leftrightarrow z-x > 0 \\Leftrightarrow x<z$})$"
+            error: "For non-negative variables, $f_X(x)>0 \\iff x>0$ and $f_Y(z-x)>0 \\iff z-x>0 \\iff x < z$. This restricts the integral to $[0, z]$.",
+            proof: "$f_Z(z) = \\int_{0}^{z} f_X(x) f_Y(z-x) dx \\quad (f_Y(z-x) > 0 \\iff z-x > 0 \\iff x < z)$"
         },
         {
             desc: "2. Substitute the Exponential PDFs $f_X(x) = \\lambda_X e^{-\\lambda_X x}$ and $f_Y(y) = \\lambda_Y e^{-\\lambda_Y y}$:",
