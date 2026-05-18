@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizing Conditional Expectation & Uncertainty</title>
+    <!-- Tailwind CSS for modern layout -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Chart.js for smooth mathematical plotting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #0f172a, #020617);
+        }
+        .math-font {
+            font-family: 'Fira Code', monospace;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen p-4 md:p-8 flex flex-col items-center">
+
+    <!-- Header Section -->
+    <header class="w-full max-w-6xl text-center mb-8">
+        <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-teal-400 via-cyan-400 to-indigo-400 mb-3">
+            Conditional Expectation & Uncertainty Reduction
+        </h1>
+        <p class="text-slate-400 max-w-2xl mx-auto text-sm md:text-base">
+            Watch how conditioning on a variable shifts the center of mass (expectation) and reduces variance compared to the overall marginal distribution.
+        </p>
+    </header>
+
+    <!-- Main Dynamic Layout -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        
+        <!-- Left Panel: Interactive Controls & Mathematics -->
+        <section class="lg:col-span-1 flex flex-col gap-6">
+            
+            <!-- Control Box -->
+            <div class="bg-slate-900/80 backdrop-blur-lg border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col gap-5">
+                <h2 class="text-xl font-bold border-b border-slate-800 pb-3 flex items-center gap-2 text-teal-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                    Conditioning Control
+                </h2>
+
+                <!-- Slider for Y -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="font-medium text-slate-300">Condition Value (<span class="math-font text-teal-400 font-bold">y</span>)</span>
+                        <span id="y-value-display" class="math-font font-bold bg-slate-950 px-2 py-0.5 rounded text-cyan-400 border border-slate-800">0.00</span>
+                    </div>
+                    <input type="range" id="y-slider" min="-2.0" max="2.0" step="0.02" value="0.00" 
+                        class="w-full accent-teal-400 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-xs text-slate-500 math-font">
+                        <span>-2.0</span>
+                        <span>0.0</span>
+                        <span>2.0</span>
+                    </div>
+                </div>
+
+                <!-- Animation Toggle -->
+                <button id="animate-btn" class="w-full bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-bold py-3 px-4 rounded-xl shadow-lg shadow-teal-500/10 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span id="btn-text">Animate Variable Y</span>
+                </button>
+            </div>
+
+            <!-- Mathematical Framework Overview Box -->
+            <div class="bg-slate-900/80 backdrop-blur-lg border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col gap-4 text-xs md:text-sm">
+                <h2 class="text-base font-bold border-b border-slate-800 pb-2 text-indigo-400 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 002-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                    Simulation Constants
+                </h2>
+                <div class="flex flex-col gap-3 leading-relaxed text-slate-300">
+                    <div>
+                        <p class="font-semibold text-slate-200 mb-1">Bivariate Normal Setup</p>
+                        <p class="text-slate-400">
+                            Variables <span class="math-font text-slate-300">X</span> and <span class="math-font text-slate-300">Y</span> are positively correlated with coefficient <span class="math-font text-teal-400">&rho; = 0.7</span>, base means <span class="math-font text-slate-300">&mu; = 0</span>, and base variance <span class="math-font text-slate-300">&sigma;² = 1</span>.
+                        </p>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-slate-200 mb-1">Marginal Density f<sub>X</sub>(x)</p>
+                        <div class="math-font bg-slate-950 p-2 rounded text-indigo-300 border border-slate-800 text-center my-1 text-xs">
+                            f<sub>X</sub>(x) = N(0, 1)
+                        </div>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-slate-200 mb-1">Conditional Expected Value Definition</p>
+                        <div class="math-font bg-slate-950 p-2 rounded text-rose-300 border border-slate-800 text-center my-1 text-xs">
+                            E[X | Y=y] = &int; x &middot; f(x|y) dx
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Charts, Dynamic Statistics & Mathematical Proofs -->
+        <section class="lg:col-span-2 flex flex-col gap-6 w-full">
+            
+            <!-- Real-time Metrics Card -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 bg-slate-900/40 backdrop-blur-lg border border-slate-800 rounded-2xl p-4">
+                <div class="p-3 bg-slate-950/50 rounded-xl border border-slate-800/60">
+                    <span class="text-xs text-slate-400 font-medium tracking-wider block">Slice Location</span>
+                    <span class="math-font text-lg md:text-xl font-bold text-cyan-400">y = <span id="stat-y">0.00</span></span>
+                </div>
+                <div class="p-3 bg-slate-950/50 rounded-xl border border-slate-800/60">
+                    <span class="text-xs text-slate-400 font-medium tracking-wider block">Conditional E[X|Y]</span>
+                    <span class="math-font text-lg md:text-xl font-bold text-rose-400"><span id="stat-ev">0.00</span></span>
+                </div>
+                <div class="p-3 bg-slate-950/50 rounded-xl border border-slate-800/60 col-span-2 md:col-span-1">
+                    <span class="text-xs text-slate-400 font-medium tracking-wider block">Uncertainty (Variance)</span>
+                    <span class="math-font text-xs text-slate-300 block mt-0.5">
+                        Marginal: <span class="text-indigo-400 font-bold">1.00</span><br>
+                        Conditional: <span class="text-cyan-400 font-bold">0.51</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Visualization Canvas Box -->
+            <div class="bg-slate-900/60 backdrop-blur-lg border border-slate-800 rounded-2xl p-4 md:p-6 shadow-2xl relative">
+                <div class="absolute top-4 right-4 bg-slate-950/80 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-slate-500 border border-slate-800">
+                    Live Density Comparison
+                </div>
+                <div class="w-full h-[320px] md:h-[380px]">
+                    <canvas id="densityChart"></canvas>
+                </div>
+            </div>
+
+            <!-- New: Derivation of f(x|y) Panel -->
+            <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 shadow-xl text-slate-300 text-sm">
+                <h3 class="text-base font-bold text-cyan-400 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" /></svg>
+                    1. Derivation of Conditional Density f(x|y)
+                </h3>
+                <div class="flex flex-col gap-3 text-xs md:text-sm leading-relaxed">
+                    <p>
+                        By definition, the conditional probability density is computed by taking the joint density function and dividing it by the marginal density of the conditioning variable:
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 math-font text-center text-slate-200">
+                        f(x|y) = f<sub>X,Y</sub>(x, y) / f<sub>Y</sub>(y)
+                    </div>
+                    <p>
+                        The joint distribution exponent for a standard bivariate normal distribution with correlation coefficient <span class="math-font text-teal-400">&rho;</span> is expanded inside the exponent matrix as:
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 math-font text-center text-slate-200">
+                        -1 / [2(1-&rho;&sup2;)] &middot; [x&sup2; - 2&rho;xy + y&sup2;]
+                    </div>
+                    <p>
+                        To isolate the terms involving <span class="math-font text-slate-300">x</span>, we algebraically <strong>complete the square</strong> inside the exponent brackets with respect to the variable <span class="math-font text-slate-300">x</span>:
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 math-font text-center text-slate-200">
+                        x&sup2; - 2&rho;xy + y&sup2; = (x - &rho;y)&sup2; + y&sup2;(1 - &rho;&sup2;)
+                    </div>
+                    <p>
+                        When substituting this back into the exponential expression, the term containing only <span class="math-font text-slate-300">y</span> splits off into a separate exponential factor:
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 math-font text-center text-slate-200">
+                        exp(- (x - &rho;y)&sup2; / [2(1-&rho;&sup2;)]) &middot; exp(- y&sup2; / 2)
+                    </div>
+                    <p>
+                        The second factor <span class="math-font text-slate-400">exp(-y&sup2;/2)</span> matches the shape of the marginal distribution <span class="math-font text-slate-300">f<sub>Y</sub>(y)</span> exactly and is completely canceled out by the denominator. This leaves behind a single Gaussian distribution pattern for <span class="math-font text-slate-300">X</span>:
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 math-font text-center text-slate-200 font-bold text-cyan-400">
+                        f(x|y) = 1 / [&radic;(2&pi;(1-&rho;&sup2;))] &middot; exp(- (x - &rho;y)&sup2; / [2(1-&rho;&sup2;)])
+                    </div>
+                    <p>
+                        This explicitly proves that given <span class="math-font text-slate-300">Y=y</span>, the distribution of <span class="math-font text-slate-300">X</span> is normally distributed with a shifted mean of <span class="math-font text-rose-400">&mu;<sub>X|Y</sub> = &rho;y</span> and a shrunken variance of <span class="math-font text-teal-400">&sigma;&sup2;<sub>X|Y</sub> = 1 - &rho;&sup2;</span>.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Explicit Derivation Section -->
+            <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 shadow-xl text-slate-300 text-sm">
+                <h3 class="text-base font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" /></svg>
+                    2. Integration Steps to find E[X|Y=y]
+                </h3>
+                <div class="flex flex-col gap-3 text-xs md:text-sm leading-relaxed">
+                    <p>
+                        Using the freshly derived conditional density distribution <span class="math-font text-cyan-400">f(x|y)</span>, we can evaluate the integration step to calculate the expected value:
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 math-font text-center text-slate-200">
+                        E[X | Y=y] = &int;<sub>-&infin;</sub><sup>&infin;</sup> x &middot; f(x|y) dx
+                    </div>
+                    <p>
+                        We make a clean substitution by setting <span class="math-font text-slate-200">u = (x - &rho;y) / &radic;(1-&rho;&sup2;)</span>, meaning <span class="math-font text-slate-200">dx = &radic;(1-&rho;&sup2;) du</span> and <span class="math-font text-slate-200">x = &rho;y + &radic;(1-&rho;&sup2;)u</span>:
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 math-font text-center text-slate-200">
+                        = &int;<sub>-&infin;</sub><sup>&infin;</sup> (&rho;y + &radic;(1-&rho;&sup2;)u) &middot; [1/&radic;(2&pi;) e<sup>-u&sup2;/2</sup>] du
+                    </div>
+                    <p>
+                        Distributing this expression splits the structure into two individual integral parts:
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 math-font text-center text-slate-200 mb-1">
+                        = (&rho;y) &int;<sub>-&infin;</sub><sup>&infin;</sup> [PDF(u)] du + &radic;(1-&rho;&sup2;) &int;<sub>-&infin;</sub><sup>&infin;</sup> u &middot; [PDF(u)] du
+                    </div>
+                    <ul class="list-disc pl-5 space-y-1 text-slate-400 text-xs">
+                        <li>The left integral sums up to <span class="text-slate-200 font-semibold">1</span> because integrating a standard normal PDF over all real numbers equals 1.</li>
+                        <li>The right integral evaluates to <span class="text-slate-200 font-semibold">0</span> because <span class="math-font text-slate-400">u &middot; e<sup>-u&sup2;/2</sup></span> is an asymmetrical odd function balanced across zero.</li>
+                    </ul>
+                    <p class="pt-2 border-t border-slate-800/60">
+                        This cancels out the entire second term, showing that the continuous definition integral simplifies perfectly to the formula running our live visualization chart:
+                        <span class="math-font text-emerald-400 font-bold ml-1">E[X | Y=y] = &rho;y</span>.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto pt-12 text-center text-xs text-slate-600 font-medium">
+        Interactive Continuous Probability Sandbox &bull; Built with Chart.js & Tailwind
+    </footer>
+
+    <script>
+        // Setup Parameters
+        const rho = 0.7; 
+        const muX = 0;
+        const muY = 0;
+        const sigmaX = 1;
+        const sigmaY = 1;
+
+        // DOM elements
+        const ySlider = document.getElementById('y-slider');
+        const yValueDisplay = document.getElementById('y-value-display');
+        const statY = document.getElementById('stat-y');
+        const statEv = document.getElementById('stat-ev');
+        const animateBtn = document.getElementById('animate-btn');
+        const btnText = document.getElementById('btn-text');
+        const playIcon = document.getElementById('play-icon');
+
+        // State variables for animation loop
+        let isAnimating = false;
+        let animDirection = 1;
+
+        // 1. Generate Static Marginal Data for X: f_X(x) ~ N(0, 1)
+        function generateMarginalData() {
+            const points = [];
+            for (let x = -3.5; x <= 3.5; x += 0.05) {
+                const exponent = -0.5 * Math.pow((x - muX) / sigmaX, 2);
+                const pdfValue = (1 / (sigmaX * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
+                points.push({ x: x, y: pdfValue });
+            }
+            return points;
+        }
+
+        // 2. Compute dynamic conditional distribution values 
+        function getConditionalStats(y) {
+            const condMean = muX + rho * (sigmaX / sigmaY) * (y - muY);
+            const condVariance = Math.pow(sigmaX, 2) * (1 - Math.pow(rho, 2));
+            const condStdDev = Math.sqrt(condVariance);
+            return { mean: condMean, stdDev: condStdDev };
+        }
+
+        // 3. Generate points for the conditional curve f(x|y)
+        function generateConditionalData(y) {
+            const points = [];
+            const stats = getConditionalStats(y);
+            
+            for (let x = -3.5; x <= 3.5; x += 0.05) {
+                const exponent = -0.5 * Math.pow((x - stats.mean) / stats.stdDev, 2);
+                const pdfValue = (1 / (stats.stdDev * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
+                points.push({ x: x, y: pdfValue });
+            }
+            return { points, mean: stats.mean };
+        }
+
+        // Initialize Data Payloads
+        const marginalPoints = generateMarginalData();
+        let initialY = parseFloat(ySlider.value);
+        let conditionalSetup = generateConditionalData(initialY);
+
+        // Render Chart.js
+        const ctx = document.getElementById('densityChart').getContext('2d');
+        const densityChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: 'Conditional Density f(x|y) [Conditioned]',
+                        data: conditionalSetup.points,
+                        borderColor: '#22d3ee', 
+                        borderWidth: 3,
+                        backgroundColor: 'rgba(34, 211, 238, 0.15)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        order: 2
+                    },
+                    {
+                        label: 'Marginal Density f_X(x) [Unconditional Uncertainty]',
+                        data: marginalPoints,
+                        borderColor: '#818cf8', 
+                        borderWidth: 2,
+                        backgroundColor: 'rgba(129, 140, 248, 0.04)',
+                        fill: true,
+                        borderDash: [4, 4],
+                        tension: 0.3,
+                        pointRadius: 0,
+                        order: 3
+                    },
+                    {
+                        label: 'Conditional Expectation E[X|Y=y]',
+                        data: [
+                            { x: conditionalSetup.mean, y: 0 },
+                            { x: conditionalSetup.mean, y: 0.95 } 
+                        ],
+                        borderColor: '#f43f5e', 
+                        borderWidth: 2.5,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#f43f5e',
+                        showLine: true,
+                        order: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        title: {
+                            display: true,
+                            text: 'Random Variable X',
+                            color: '#94a3b8',
+                            font: { family: 'Inter', weight: 'bold' }
+                        },
+                        ticks: { color: '#64748b' },
+                        grid: { color: 'rgba(51, 65, 85, 0.15)' },
+                        min: -3.5,
+                        max: 3.5
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Probability Density',
+                            color: '#94a3b8',
+                            font: { family: 'Inter', weight: 'bold' }
+                        },
+                        ticks: { color: '#64748b' },
+                        grid: { color: 'rgba(51, 65, 85, 0.15)' },
+                        min: 0,
+                        max: 0.95
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#e2e8f0',
+                            font: { family: 'Inter', size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Update Frame Graphics Render
+        function updateVisualization(yVal) {
+            yValueDisplay.textContent = yVal.toFixed(2);
+            statY.textContent = yVal.toFixed(2);
+            
+            const updatedData = generateConditionalData(yVal);
+            statEv.textContent = updatedData.mean.toFixed(2);
+
+            densityChart.data.datasets[0].data = updatedData.points;
+            densityChart.data.datasets[2].data = [
+                { x: updatedData.mean, y: 0 },
+                { x: updatedData.mean, y: 0.95 }
+            ];
+            
+            densityChart.update('none'); 
+        }
+
+        // Slider Input Listener
+        ySlider.addEventListener('input', (e) => {
+            if (isAnimating) stopAnimation();
+            updateVisualization(parseFloat(e.target.value));
+        });
+
+        // Robust Animation Loop Engine
+        function animationFrameStep() {
+            if (!isAnimating) return;
+
+            let currentVal = parseFloat(ySlider.value);
+            currentVal += 0.02 * animDirection;
+
+            const maxLimit = parseFloat(ySlider.max);
+            const minLimit = parseFloat(ySlider.min);
+
+            if (currentVal >= maxLimit) {
+                currentVal = maxLimit;
+                animDirection = -1;
+            } else if (currentVal <= minLimit) {
+                currentVal = minLimit;
+                animDirection = 1;
+            }
+
+            ySlider.value = currentVal.toFixed(2);
+            updateVisualization(currentVal);
+
+            requestAnimationFrame(animationFrameStep);
+        }
+
+        function startAnimation() {
+            isAnimating = true;
+            animateBtn.classList.remove('from-teal-500', 'to-cyan-500');
+            animateBtn.classList.add('from-amber-500', 'to-orange-500');
+            btnText.textContent = "Pause Animation";
+            playIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />`;
+            requestAnimationFrame(animationFrameStep);
+        }
+
+        function stopAnimation() {
+            isAnimating = false;
+            animateBtn.classList.remove('from-amber-500', 'to-orange-500');
+            animateBtn.classList.add('from-teal-500', 'to-cyan-500');
+            btnText.textContent = "Animate Variable Y";
+            playIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />`;
+        }
+
+        animateBtn.addEventListener('click', () => {
+            if (isAnimating) stopAnimation(); else startAnimation();
+        });
+
+        // Primary Draw Initializer
+        updateVisualization(initialY);
+    </script>
+</body>
+</html>
+
