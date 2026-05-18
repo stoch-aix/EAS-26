@@ -71,38 +71,45 @@
 <script>
     const steps = [
         {
-            desc: "1. Identify the conditional density $f_{X|Y}(x|y)$ given that $X \\mid Y$ follows an Exponential law with parameter $Y$:",
-            correct: "$f_{X|Y}(x|y) = y e^{-yx}, \\quad x > 0$",
-            wrong: "$f_{X|Y}(x|y) = \\frac{1}{y} e^{-x/y}, \\quad x > 0$",
-            error: "An Exponential distribution with parameter (rate) $\\lambda = y$ has the density $f(x) = y e^{-yx}$, not $1/y$.",
-            proof: "$f_{X|Y}(x|y) = y e^{-yx} \\quad \\text{for } x > 0$"
+            desc: "1. Express the joint density function $f_{X,Y}(x,y)$ using the product rule $f_{X,Y}(x,y) = f_{X|Y}(x|y) f_Y(y)$ for $x > 0, y > 0$:",
+            correct: "$f_{X,Y}(x,y) = y e^{-yx} \\cdot f_Y(y)$",
+            wrong: "$f_{X,Y}(x,y) = \\frac{1}{y} e^{-x/y} \\cdot f_Y(y)$",
+            error: "The conditional law is $X \\mid Y \\sim Exp(Y)$, which yields the conditional density $f_{X|Y}(x|y) = y e^{-yx}$.",
+            proof: "$f_{X,Y}(x,y) = f_{X|Y}(x|y) f_Y(y) = y e^{-yx} f_Y(y)$"
         },
         {
-            desc: "2. Set up the integral for the conditional expectation $E[X|Y=y]$ using its fundamental definition:",
+            desc: "2. Derive the conditional density $f_{X|Y}(x|y)$ back from the joint and marginal density functions via definition:",
+            correct: "$f_{X|Y}(x|y) = \\frac{f_{X,Y}(x,y)}{f_Y(y)} = \\frac{y e^{-yx} f_Y(y)}{f_Y(y)} = y e^{-yx}$",
+            wrong: "$f_{X|Y}(x|y) = \\frac{f_Y(y)}{f_{X,Y}(x,y)} = \\frac{f_Y(y)}{y e^{-yx} f_Y(y)} = \\frac{1}{y} e^{yx}$",
+            error: "By definition, the conditional density is the joint density divided by the marginal density of the conditioning variable: $f_{X|Y}(x|y) = \\frac{f_{X,Y}(x,y)}{f_Y(y)}$.",
+            proof: "$f_{X|Y}(x|y) = \\frac{f_{X,Y}(x,y)}{f_Y(y)} = y e^{-yx}$"
+        },
+        {
+            desc: "3. Set up the integral for the conditional expectation $E[X|Y=y]$ using the derived conditional density:",
             correct: "$E[X|Y=y] = \\int_{0}^{\\infty} x \\cdot y e^{-yx} dx$",
             wrong: "$E[X|Y=y] = \\int_{0}^{\\infty} y e^{-yx} dx$",
-            error: "To compute the expected value of $X$, you must include the factor of $x$ inside the integral.",
+            error: "To compute the expected value of $X$, you must include the factor of $x$ inside the integration framework.",
             proof: "$E[X|Y=y] = \\int_{0}^{\\infty} x \\cdot y e^{-yx} dx$"
         },
         {
-            desc: "3. Evaluate the expectation integral using integration by parts or known properties of the Exponential distribution:",
+            desc: "4. Evaluate the expectation integral using integration by parts or known properties of the Exponential distribution:",
             correct: "$E[X|Y=y] = \\frac{1}{y}$",
             wrong: "$E[X|Y=y] = y$",
             error: "The mean of an Exponential distribution with rate parameter $y$ is its reciprocal, $\\frac{1}{y}$.",
             proof: "$E[X|Y=y] = \\frac{1}{y} \\implies E[X|Y] = \\frac{1}{Y}$"
         },
         {
-            desc: "4. State the density function $f_Y(y)$ for the random parameter $Y \\sim \\chi^2(1)$ for $y > 0$:",
+            desc: "5. State the density function $f_Y(y)$ for the random parameter $Y \\sim \\chi^2(1)$ for $y > 0$:",
             correct: "$f_Y(y) = \\frac{1}{\\sqrt{2\\pi y}} e^{-y/2}$",
             wrong: "$f_Y(y) = e^{-y}$",
             error: "The standard $\\chi^2(1)$ density is a special case of the Gamma distribution given by $\\frac{1}{\\sqrt{2\\pi y}} e^{-y/2}$.",
             proof: "$Y \\sim \\chi^2(1) \\implies f_Y(y) = \\frac{1}{\\sqrt{2\\pi y}} e^{-y/2} \\quad \\text{for } y > 0$"
         },
         {
-            desc: "5. Exemplify the expression by finding the explicit value when given the condition $Y = 2$:",
+            desc: "6. Exemplify the expression by finding the explicit value when given the condition $Y = 2$:",
             correct: "$E[X|Y=2] = \\frac{1}{2} = 0.5$",
             wrong: "$E[X|Y=2] = \\frac{1}{\\sqrt{4\\pi}} e^{-1}$",
-            error: "The conditional expectation depends only on the mapping derived in Step 3 ($1/y$). Simply substitute $y = 2$ directly into $\\frac{1}{y}$.",
+            error: "The conditional expectation mapping depends entirely on $y$ from step 4 ($1/y$). Substitute $y = 2$ directly into $\\frac{1}{y}$.",
             proof: "$E[X|Y=2] = \\frac{1}{2} = 0.5 \\quad \\text{(Exemplified)}$"
         }
     ];
