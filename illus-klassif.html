@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktive Visualisierung: ML Klassifikation</title>
+    <!-- Tailwind CSS für modernes Design -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    
+    <!-- Fehlerfreie MathJax Konfiguration & Skript-Quelle -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        .grid-dot {
+            transition: all 0.3s ease;
+        }
+        .pulse-highlight {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+
+    <div class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8 text-center border-b border-gray-200 pb-6">
+            <h1 class="text-3xl font-bold text-slate-900">Beispiel: Klassifikation im Machine Learning</h1>
+            <p class="text-gray-600 mt-2">Interaktives Dashboard zur Analyse von Sensitivität, Spezifität und Falsch-Positiv-Rate</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- LINKE SPALTE: REGLER & ANALYSIS -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Parameter Sliders -->
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                        <span>⚙️</span> Parameter anpassen
+                    </h2>
+                    
+                    <!-- Parameter 1: Prevalence -->
+                    <div class="mb-5">
+                        <div class="flex justify-between mb-1 items-center">
+                            <label class="font-medium text-sm text-gray-700">Defektanteil <span class="font-mono bg-slate-100 px-1 py-0.5 rounded text-xs">P(Z=1)</span></label>
+                            <span id="val-prevalence" class="text-sm font-bold text-slate-900">10%</span>
+                        </div>
+                        <input type="range" id="slider-prevalence" min="1" max="50" value="10" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-slate-700">
+                        <span class="text-xs text-gray-400">Anteil der tatsächlich defekten Objekte in der Population</span>
+                    </div>
+
+                    <!-- Parameter 2: Specificity -->
+                    <div class="mb-5">
+                        <div class="flex justify-between mb-1 items-center">
+                            <label class="font-medium text-sm text-gray-700">Spezifität <span class="font-mono bg-slate-100 px-1 py-0.5 rounded text-xs">P(Y=0|Z=0)</span></label>
+                            <span id="val-specificity" class="text-sm font-bold text-green-700">90%</span>
+                        </div>
+                        <input type="range" id="slider-specificity" min="50" max="100" value="90" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600">
+                        <span class="text-xs text-gray-400">Wahrscheinlichkeit, ein intaktes Objekt korrekt als „ok“ zu erkennen</span>
+                    </div>
+
+                    <!-- Parameter 3: Sensitivity -->
+                    <div class="mb-5">
+                        <div class="flex justify-between mb-1 items-center">
+                            <label class="font-medium text-sm text-gray-700">Sensitivität <span class="font-mono bg-slate-100 px-1 py-0.5 rounded text-xs">P(Y=1|Z=1)</span></label>
+                            <span id="val-sensitivity" class="text-sm font-bold text-blue-700">95%</span>
+                        </div>
+                        <input type="range" id="slider-sensitivity" min="50" max="100" value="95" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                        <span class="text-xs text-gray-400">Wahrscheinlichkeit, ein defektes Objekt korrekt als „defekt“ zu erkennen</span>
+                    </div>
+                </div>
+
+                <!-- Analyse-Box -->
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-100 space-y-4">
+                    <h3 class="font-bold text-slate-900 text-lg">Mathematische Analyse</h3>
+                    <div class="text-sm space-y-3 text-gray-700">
+                        <p><strong>Problem:</strong> Klassifiziere Objekte in 2 Klassen (0: ok, 1: defekt)</p>
+                        <p>Analyse des Zählers für die Falsch-Positiv-Rate:</p>
+                        
+                        <div class="bg-white p-3 rounded border border-slate-200 text-sm overflow-x-auto">
+                            $$p_{10} = P(Y=1|Z=0) P(Z=0)$$
+                            $$= (1 - P(Y=0|Z=0) ) \cdot (1 - P(Z=1))$$
+                        </div>
+                        
+                        <p class="text-xs text-red-800 bg-red-50 p-3 rounded border border-red-200 font-medium">
+                            ⚠️ <strong>Das Paradoxon:</strong> Wenn der Defektanteil klein ist, wird $(1 - P(Z=1))$ sehr groß. Die Falsch-Positiv-Rate kann daher extrem hoch sein, wenn die Spezifität nicht nahe bei 1 liegt!
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RECHTE SPALTE: CONFUSION MATRIX & LIVE VISUALISIERUNG -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Kennzahlen-Karten -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-5 rounded-xl shadow-md border-l-4 border-red-500">
+                        <div class="text-sm text-gray-500 uppercase tracking-wider font-semibold">Falsch-Positiv-Rate (FPR)</div>
+                        <div class="text-3xl font-black text-red-600 my-1" id="metric-fpr">52.9%</div>
+                        <div class="bg-slate-50 p-1 rounded text-xs mt-1">
+                            $$P(Z=0 | Y=1) = \frac{p_{10}}{p_{10} + p_{11}}$$
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-md border-l-4 border-slate-600">
+                        <div class="text-sm text-gray-500 uppercase tracking-wider font-semibold">Fehlklassifikation (p_err)</div>
+                        <div class="text-3xl font-black text-slate-700 my-1" id="metric-perr">9.5%</div>
+                        <div class="bg-slate-50 p-1 rounded text-xs mt-1">
+                            $$p_{err} = p_{01} + p_{10}$$
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wahrscheinlichkeitstabelle (Konfusionsmatrix) -->
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Wahre Wahrscheinlichkeiten in der Population</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-center border-collapse text-sm sm:text-base">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="p-3 border border-gray-200 text-left">Klassifizierer Y</th>
+                                    <th class="p-3 border border-gray-200 text-green-700 font-medium">wahres Label Z = 0 (ok)</th>
+                                    <th class="p-3 border border-gray-200 text-slate-700 font-medium">wahres Label Z = 1 (defekt)</th>
+                                    <th class="p-3 border border-gray-200 bg-gray-200 font-bold text-gray-700">Gesamt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="p-3 border border-gray-200 font-medium bg-gray-50 text-left">„0“ (Entscheidung ok)</td>
+                                    <td id="cell-p00" class="p-3 border border-gray-200 font-mono bg-green-50/30 text-green-900 font-bold">--</td>
+                                    <td id="cell-p01" class="p-3 border border-gray-200 font-mono text-orange-600">--</td>
+                                    <td id="row-sum0" class="p-3 border border-gray-200 font-mono bg-gray-50 font-semibold text-gray-600">--</td>
+                                </tr>
+                                <tr class="border-b-2 border-gray-300">
+                                    <td class="p-3 border border-gray-200 font-medium bg-gray-50 text-left">„1“ (Entscheidung defekt)</td>
+                                    <td id="cell-p10" class="p-3 border border-gray-200 font-mono bg-red-50 text-red-700 font-black ring-2 ring-red-400 ring-inset">--</td>
+                                    <td id="cell-p11" class="p-3 border border-gray-200 font-mono bg-blue-50 text-blue-800 font-black">--</td>
+                                    <td id="row-sum1" class="p-3 border border-gray-200 font-mono bg-slate-50 font-bold text-slate-900">--</td>
+                                </tr>
+                                <tr class="bg-gray-100 font-semibold text-gray-700">
+                                    <td class="p-3 border border-gray-200 text-left">Gesamt</td>
+                                    <td id="col-sum0" class="p-3 border border-gray-200 font-mono text-green-700">--</td>
+                                    <td id="col-sum1" class="p-3 border border-gray-200 font-mono text-slate-700">--</td>
+                                    <td class="p-3 border border-gray-200 font-mono text-black font-bold">100.0%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- LIVE SIMULATION DER POPULATION -->
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2">
+                        <h3 class="text-lg font-semibold text-gray-800">Populations-Simulation (100 Testobjekte)</h3>
+                        <div class="flex flex-wrap gap-3 text-xs font-semibold">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-green-500 rounded-full inline-block"></span> Richtig Gesund (p₀₀)</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-red-500 rounded-full inline-block pulse-highlight"></span> Fehlalarm (p₁₀)</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-blue-600 rounded-full inline-block"></span> Treffer / Korrekt defekt (p₁₁)</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-orange-400 rounded-full inline-block"></span> Übersehener Defekt (p₀₁)</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Raster für 100 interaktive Punkte -->
+                    <div id="population-grid" class="grid grid-cols-10 gap-2 p-4 bg-gray-900 rounded-xl justify-items-center">
+                        <!-- Wird dynamisch via Javascript befüllt -->
+                    </div>
+                    <div class="text-xs text-gray-500 mt-3 text-center">
+                        Jeder Punkt repräsentiert ein Objekt in der Population. Verringern Sie den Defektanteil, um zu sehen, wie die <span class="text-red-500 font-bold">roten Punkte (Fehlalarme)</span> im Verhältnis zu den <span class="text-blue-600 font-bold">blauen Punkten (echte Treffer)</span> massiv ansteigen können!
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logik & Interaktion -->
+    <script>
+        const sliderPrevalence = document.getElementById('slider-prevalence');
+        const sliderSpecificity = document.getElementById('slider-specificity');
+        const sliderSensitivity = document.getElementById('slider-sensitivity');
+
+        const valPrevalence = document.getElementById('val-prevalence');
+        const valSpecificity = document.getElementById('val-specificity');
+        const valSensitivity = document.getElementById('val-sensitivity');
+
+        const cellP00 = document.getElementById('cell-p00');
+        const cellP01 = document.getElementById('cell-p01');
+        const cellP10 = document.getElementById('cell-p10');
+        const cellP11 = document.getElementById('cell-p11');
+
+        const rowSum0 = document.getElementById('row-sum0');
+        const rowSum1 = document.getElementById('row-sum1');
+        const colSum0 = document.getElementById('col-sum0');
+        const colSum1 = document.getElementById('col-sum1');
+
+        const metricFpr = document.getElementById('metric-fpr');
+        const metricPerr = document.getElementById('metric-perr');
+
+        const populationGrid = document.getElementById('population-grid');
+
+        // Initialisiere die 100 Punkte im Grid einmalig
+        for (let i = 0; i < 100; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'grid-dot w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gray-600';
+            populationGrid.appendChild(dot);
+        }
+
+        function updateSimulation() {
+            // Werte aus den Schiebereglern einlesen
+            const prev = parseFloat(sliderPrevalence.value) / 100;    
+            const spec = parseFloat(sliderSpecificity.value) / 100;   
+            const sens = parseFloat(sliderSensitivity.value) / 100;   
+
+            // Anzeige-Texte updaten
+            valPrevalence.innerText = sliderPrevalence.value + '%';
+            valSpecificity.innerText = sliderSpecificity.value + '%';
+            valSensitivity.innerText = sliderSensitivity.value + '%';
+
+            // Verbundwahrscheinlichkeiten berechnen
+            const p00 = spec * (1 - prev);           
+            const p10 = (1 - spec) * (1 - prev);     
+            const p11 = sens * prev;                 
+            const p01 = (1 - sens) * prev;           
+
+            // Randverteilungen (Summen)
+            const totalY0 = p00 + p01;
+            const totalY1 = p10 + p11;
+            const totalZ0 = p00 + p10;
+            const totalZ1 = p01 + p11;
+
+            // Zielmetriken
+            const fpr = totalY1 > 0 ? (p10 / totalY1) : 0;
+            const pErr = p01 + p10;
+
+            // Reine Text-Injektion in die Tabellenzellen ohne LaTeX-Zerstörung
+            cellP00.innerText = `p₀₀ = ${(p00 * 100).toFixed(1)}%`;
+            cellP01.innerText = `p₀₁ = ${(p01 * 100).toFixed(1)}%`;
+            cellP10.innerText = `p₁₀ = ${(p10 * 100).toFixed(1)}%`;
+            cellP11.innerText = `p₁₁ = ${(p11 * 100).toFixed(1)}%`;
+
+            rowSum0.innerText = `${(totalY0 * 100).toFixed(1)}%`;
+            rowSum1.innerText = `${(totalY1 * 100).toFixed(1)}%`;
+            colSum0.innerText = `${(totalZ0 * 100).toFixed(1)}%`;
+            colSum1.innerText = `${(totalZ1 * 100).toFixed(1)}%`;
+
+            // Hauptkennzahlen aktualisieren
+            metricFpr.innerText = `${(fpr * 100).toFixed(1)}%`;
+            metricPerr.innerText = `${(pErr * 100).toFixed(1)}%`;
+
+            // Verteilung für die 100 Grafikpunkte berechnen
+            const countZ1 = Math.round(prev * 100);
+            const countZ0 = 100 - countZ1;
+
+            const countTrueNegative = Math.round(spec * countZ0);
+            const countFalsePositive = countZ0 - countTrueNegative;
+
+            const countTruePositive = Math.round(sens * countZ1);
+            const countFalseNegative = countZ1 - countTruePositive;
+
+            let statuses = [];
+            for(let i=0; i<countTrueNegative; i++) statuses.push('tn');
+            for(let i=0; i<countFalsePositive; i++) statuses.push('fp'); 
+            for(let i=0; i<countFalseNegative; i++) statuses.push('fn');
+            for(let i=0; i<countTruePositive; i++) statuses.push('tp');  
+
+            // Klassen auf Grid-Punkte anwenden
+            const dots = populationGrid.children;
+            for(let i=0; i<100; i++) {
+                const currentStatus = statuses[i] || 'tn';
+                dots[i].className = 'grid-dot w-5 h-5 sm:w-6 sm:h-6 rounded-full';
+                
+                if(currentStatus === 'tn') {
+                    dots[i].classList.add('bg-green-500', 'border', 'border-green-600');
+                } else if(currentStatus === 'fp') {
+                    // FEHLALARM -> ROT
+                    dots[i].classList.add('bg-red-500', 'pulse-highlight', 'ring-2', 'ring-red-300');
+                } else if(currentStatus === 'fn') {
+                    dots[i].classList.add('bg-orange-400', 'border', 'border-orange-500');
+                } else if(currentStatus === 'tp') {
+                    // TREFFER -> BLAU
+                    dots[i].classList.add('bg-blue-600', 'ring-2', 'ring-blue-300');
+                }
+            }
+        }
+
+        // Event-Listener für Interaktion anheften
+        sliderPrevalence.addEventListener('input', updateSimulation);
+        sliderSpecificity.addEventListener('input', updateSimulation);
+        sliderSensitivity.addEventListener('input', updateSimulation);
+
+        // Erster Aufruf direkt beim Laden
+        window.addEventListener('load', () => {
+            updateSimulation();
+            // MathJax einmalig nach dem Laden triggern, um die statischen Formeln umzuwandeln
+            if (window.MathJax && window.MathJax.typeset) {
+                window.MathJax.typeset();
+            }
+        });
+    </script>
+</body>
+</html>
+
