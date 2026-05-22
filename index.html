@@ -1,1 +1,304 @@
-hello world!
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EAS-26 | Einführung in die Angewandte Stochastik</title>
+    <style>
+        :root {
+            --bg-main: #0d1117;
+            --bg-card: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #7ee787;
+            --accent-purple: #bc8cff;
+            --font-mono: 'Fira Code', 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            padding: 2rem 1rem;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .repo-path {
+            font-family: var(--font-mono);
+            color: var(--accent-blue);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+            font-size: 1.1rem;
+        }
+
+        .grid-section {
+            margin-bottom: 3rem;
+        }
+
+        .section-title {
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            margin-left: 1rem;
+            height: 1px;
+            background-color: var(--border-color);
+        }
+
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1.25rem;
+            text-decoration: none;
+            color: var(--text-main);
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-name {
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            color: var(--accent-blue);
+            word-break: break-all;
+        }
+
+        .badge {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent-blue);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+        }
+
+        .badge.discrete {
+            color: var(--accent-green);
+            background: rgba(126, 231, 135, 0.1);
+            border-color: rgba(126, 231, 135, 0.2);
+        }
+
+        .badge.advanced {
+            color: var(--accent-purple);
+            background: rgba(188, 140, 255, 0.1);
+            border-color: rgba(188, 140, 255, 0.2);
+        }
+
+        .card-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        footer {
+            margin-top: 5rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="repo-path">stock-aix / EAS-26</div>
+        <h1>Einführung in die Angewandte Stochastik</h1>
+        <p class="subtitle">Interaktive Visualisierungen & Programmierbeispiele für Informatiker</p>
+    </header>
+
+    <!-- SECTION 1: FOUNDATIONS -->
+    <section class="grid-section">
+        <div class="section-title">01 // Grundlagen & Elementare Wahrscheinlichkeit</div>
+        <div class="links-grid">
+            <a href="illus-prob-1.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-prob-1.html</span>
+                    <span class="badge">Wahrscheinlichkeit</span>
+                </div>
+                <p class="card-desc">Elementare Wahrscheinlichkeiten und fundamentale Konzepte.</p>
+            </a>
+            <a href="illus-klassif.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-klassif.html</span>
+                    <span class="badge">Klassifikation</span>
+                </div>
+                <p class="card-desc">Stochastische Klassifikationsmodelle und Entscheidungsgrenzen.</p>
+            </a>
+        </div>
+    </section>
+
+    <!-- SECTION 2: DISCRETE DISTRIBUTIONS -->
+    <section class="grid-section">
+        <div class="section-title">02 // Diskrete Verteilungen & Erwartungswerte</div>
+        <div class="links-grid">
+            <a href="illus-hypergeom.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-hypergeom.html</span>
+                    <span class="badge discrete">Diskrete RV</span>
+                </div>
+                <p class="card-desc">Hypergeometrische Verteilung: Ziehen ohne Zurücklegen.</p>
+            </a>
+            <a href="illus-ewvar-pois.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-ewvar-pois.html</span>
+                    <span class="badge discrete">Erwartungswert</span>
+                </div>
+                <p class="card-desc">Erwartungswert und Varianz der Poisson-Verteilung.</p>
+            </a>
+            <a href="illus-pois-network.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-pois-network.html</span>
+                    <span class="badge discrete">Netzwerke</span>
+                </div>
+                <p class="card-desc">Poisson-Prozesse angewandt auf Netzwerke und Warteschlangen.</p>
+            </a>
+        </div>
+    </section>
+
+    <!-- SECTION 3: CONTINUOUS DISTRIBUTIONS -->
+    <section class="grid-section">
+        <div class="section-title">03 // Stetige Verteilungen & Transformationen</div>
+        <div class="links-grid">
+            <a href="illus-normal.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-normal.html</span>
+                    <span class="badge">Stetige RV</span>
+                </div>
+                <p class="card-desc">Normalverteilung (Gauß) und dichte-basierte Eigenschaften.</p>
+            </a>
+            <a href="illus-ewvar-nv.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-ewvar-nv.html</span>
+                    <span class="badge">Erwartungswert</span>
+                </div>
+                <p class="card-desc">Erwartungswert und Varianz von normalverteilten Zufallsvariablen.</p>
+            </a>
+            <a href="density-transform.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">density-transform.html</span>
+                    <span class="badge">Transformation</span>
+                </div>
+                <p class="card-desc">Dichtetransformationssatz für stetige Zufallsvariablen.</p>
+            </a>
+            <a href="illus-faltung-exp.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-faltung-exp.html</span>
+                    <span class="badge">Faltung</span>
+                </div>
+                <p class="card-desc">Faltung (Convolution) von Exponentialverteilungen.</p>
+            </a>
+            <a href="illus-network-density.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-network-density.html</span>
+                    <span class="badge">Netzwerke</span>
+                </div>
+                <p class="card-desc">Dichtefunktionen im Kontext von Netzwerktopologien.</p>
+            </a>
+        </div>
+    </section>
+
+    <!-- SECTION 4: CONDITIONAL EXPECTATION & ADVANCED TOPICS -->
+    <section class="grid-section">
+        <div class="section-title">04 // Bedingte Parameter & Komplexe Systeme</div>
+        <div class="links-grid">
+            <a href="illus-condexp-1.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-condexp-1.html</span>
+                    <span class="badge advanced">Bedingt</span>
+                </div>
+                <p class="card-desc">Bedingter Erwartungswert (Teil 1): Geometrische Intuition.</p>
+            </a>
+            <a href="illus-condmean.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-condmean.html</span>
+                    <span class="badge advanced">Bedingt</span>
+                </div>
+                <p class="card-desc">Bedingter Mittelwert (Conditional Mean Estimation).</p>
+            </a>
+            <a href="illus-toy-llm.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">illus-toy-llm.html</span>
+                    <span class="badge advanced">AI / LLM</span>
+                </div>
+                <p class="card-desc">Stochastische Markov-Ketten hinter Large Language Models.</p>
+            </a>
+            <a href="multi-agent-security.html" class="card">
+                <div class="card-header">
+                    <span class="file-name">multi-agent-security.html</span>
+                    <span class="badge advanced">Security</span>
+                </div>
+                <p class="card-desc">Stochastische Sicherheitsszenarien in Multi-Agenten-Systemen.</p>
+            </a>
+        </div>
+    </section>
+
+    <footer>
+        <p>stock-aix // EAS-26 Dashboard // Powered by HTML & CSS Grid</p>
+    </footer>
+</div>
+
+</body>
+</html>
