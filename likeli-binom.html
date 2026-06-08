@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binomial Likelihood & Maximum Likelihood Estimation</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMath()"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .input-section {
+            background: #eef2f3;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        label {
+            font-weight: bold;
+        }
+        input[type="number"] {
+            padding: 8px;
+            width: 80px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .chart-container {
+            position: relative;
+            margin: 20px 0 40px 0;
+            height: 400px;
+            width: 100%;
+        }
+        .math-section {
+            background: #fafafa;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            border-radius: 4px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Binomial Likelihood & MLE</h1>
+    <p>This tool visualizes the Likelihood function for a Binomial experiment given the number of trials \(n\) and observed successes \(y\). It automatically computes and highlights the Maximum Likelihood Estimate (MLE) \(\hat{p}\).</p>
+    
+    <div class="input-section">
+        <div>
+            <label for="inputN">Total Trials (\(n\)): </label>
+            <input type="number" id="inputN" value="10" min="1">
+        </div>
+        <div>
+            <label for="inputY">Observed Successes (\(y\)): </label>
+            <input type="number" id="inputY" value="4" min="0">
+        </div>
+        <button onclick="updateVisualization()">Update Plot</button>
+        <span id="errorMsg" class="error"></span>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="likelihoodChart"></canvas>
+    </div>
+
+    <hr>
+
+    <div class="math-section">
+        <h2>Mathematical Derivation</h2>
+        
+        <h3>1. The Probability Mass Function (Density)</h3>
+        <p>For a fixed success probability \(p\), the probability of observing exactly \(y\) successes in \(n\) independent trials follows the Binomial distribution:</p>
+        \[P(Y = y \mid p) = \binom{n}{y} p^y (1-p)^{n-y}\]
+        
+        <p>This can be conceptually built as a product of individual Bernoullxi trials. Let \(x_i \in \{0, 1\}\) represent the realisations of the i.i.d. random variables \( X_i \), \( i = 1, \ldots, n \). The density of \( X_i \) is \( f(x \mid p ) = p^x (1-p)^{1-x}, x \in \{ 0,1 \} \), and \( f(x \mid p ) = 0, x \in \mathbb{R}\backslash \{ 0,1 \}  \). The density evaluated at \( x_i \) is \(f(x_i \mid p) = p^{x_i}(1-p)^{1-x_i}\), where \( x_i \in \{ 0, 1 \}, i = 1, \ldots, n \). Assuming independence, the joint density of the sequence evaluated at the realisations \( x_1, \ldots, x_n \) is the product:</p>
+        \[\prod_{i=1}^n f(x_i \mid p) = \prod_{i=1}^n p^{x_i}(1-p)^{1-x_i} = p^{\sum_{i=1}^n x_i} (1-p)^{n - \sum_{i=1}^n x_i} = p^y (1-p)^{n-y}\] where \( y = \sum_{i=1}^n x_i \) is the observed number of successes.
+        
+        <p>Accounting for all \(\binom{n}{y}\) possible orderings of these outcomes yields the Binomial density above.</p>
+
+        <h3>2. The Likelihood Function</h3>
+        <p>In parameter estimation, the data (\(y, n\)) are fixed, and we vary the parameter \(p\). The likelihood function \(L(p \mid y)\) is structurally identical to the probability density but viewed as a function of \(p\):</p>
+        \[L(p \mid y) = \binom{n}{y} p^y (1-p)^{n-y}\]
+
+        <h3>3. Derivation of the Maximum Likelihood Estimate (MLE)</h3>
+        <p>To find the value of \(p\) that maximizes \(L(p \mid y)\), it is mathematically easier to maximize the natural logarithm of the likelihood function, called the <strong>Log-Likelihood</strong> \(\ell(p)\):</p>
+        \[\ell(p) = \ln L(p \mid y) = \ln \binom{n}{y} + y \ln(p) + (n-y) \ln(1-p)\]
+        
+        <p>To find the maximum, we take the first derivative with respect to \(p\) and set it to zero: The ML estimator \( \hat p \) satisfies </p>
+        \[\frac{d\ell(p)}{dp} \mid_{p=\hat p} = \frac{y}{\hat p} - \frac{n-y}{1-\hat p} = 0\]
+        
+        <p>Solving for \(\hat p\):</p>
+        \[\frac{y}{\hat p} = \frac{n-y}{1-\hat p}\]
+        \[y(1-\hat p) = \hat p(n-y)\]
+        \[y - y\hat p = n\hat p - y \hat p\]
+        \[y = n\hat p \implies \hat{p} = \frac{y}{n}\]
+        
+        <p>Thus, the Maximum Likelihood Estimate \(\hat{p}\) is simply the observed sample proportion, which is explicitly highlighted in the chart above.</p>
+    </div>
+</div>
+
+<script>
+    let chartInstance = null;
+
+    // Trigger KaTeX to render all math elements on the page
+    function renderMath() {
+        if (typeof renderMathInElement === 'function') {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });
+        }
+    }
+
+    function calculateLikelihood(p, n, y) {
+        function binomialCoefficient(n, k) {
+            if (k < 0 || k > n) return 0;
+            if (k === 0 || k === n) return 1;
+            let res = 1;
+            for (let i = 1; i <= k; i++) {
+                res = res * (n - k + i) / i;
+            }
+            return res;
+        }
+        
+        const coeff = binomialCoefficient(n, y);
+        const term1 = (p === 0 && y === 0) ? 1 : Math.pow(p, y);
+        const term2 = (p === 1 && n === y) ? 1 : Math.pow(1 - p, n - y);
+        
+        return coeff * term1 * term2;
+    }
+
+    function updateVisualization() {
+        const n = parseInt(document.getElementById('inputN').value);
+        const y = parseInt(document.getElementById('inputY').value);
+        const errorMsg = document.getElementById('errorMsg');
+        
+        if (isNaN(n) || isNaN(y) || n <= 0 || y < 0) {
+            errorMsg.innerText = "Please enter valid positive numbers.";
+            return;
+        }
+        if (y > n) {
+            errorMsg.innerText = "Successes (y) cannot exceed total trials (n).";
+            return;
+        }
+        errorMsg.innerText = "";
+
+        const pValues = [];
+        const likelihoodValues = [];
+        const steps = 200;
+
+        for (let i = 0; i <= steps; i++) {
+            let p = i / steps;
+            pValues.push(p);
+            likelihoodValues.push(calculateLikelihood(p, n, y));
+        }
+
+        const mleP = y / n;
+        const mleMaxVal = calculateLikelihood(mleP, n, y);
+
+        const data = {
+            labels: pValues,
+            datasets: [
+                {
+                    label: 'Likelihood L(p)',
+                    data: likelihoodValues,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.1
+                },
+                {
+                    label: `MLE Maximum (p̂ = ${mleP.toFixed(3)})`,
+                    data: [{x: mleP, y: mleMaxVal}],
+                    borderColor: '#e74c3c',
+                    backgroundColor: '#e74c3c',
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    showLine: false,
+                    type: 'scatter'
+                }
+            ]
+        };
+
+        const config = {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        title: {
+                            display: true,
+                            text: 'Parameter p (Success Probability)',
+                            font: { weight: 'bold' }
+                        },
+                        min: 0,
+                        max: 1
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Likelihood Value',
+                            font: { weight: 'bold' }
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        };
+
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+        const ctx = document.getElementById('likelihoodChart').getContext('2d');
+        chartInstance = new Chart(ctx, config);
+    }
+
+    // Initialize layout on load
+    window.onload = function() {
+        updateVisualization();
+        renderMath();
+    };
+</script>
+
+</body>
+</html>
+
