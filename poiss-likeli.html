@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poisson Likelihood & Schätzung</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMath()"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .control-panel {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input[type="text"] {
+            padding: 8px;
+            width: 300px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .error {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+            margin-bottom: 30px;
+        }
+        .math-block {
+            background: #f1f3f5;
+            padding: 15px;
+            border-left: 5px solid #0d6efd;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .highlight {
+            color: #0d6efd;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Interaktive Poisson-Likelihood & Maximum-Likelihood-Schätzung</h1>
+    
+    <div class="container">
+        <p>
+            Dieses Tool veranschaulicht die Likelihood-Funktion für eine Stichprobe aus einem poissonverteilten Experiment. 
+            Du kannst die beobachteten Datenwerte anpassen, um zu sehen, wie sich die Likelihood-Kurve und der Schätzwert für <span>$\lambda$</span> verändern.
+        </p>
+
+        <div class="control-panel">
+            <label for="data-input">Beobachtete Datenpunkte $x_i$ (kommagetrennt):</label><br>
+            <input type="text" id="data-input" value="2, 3, 5, 4, 2">
+            <button onclick="updateAll()" style="padding: 8px 15px; background: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">Aktualisieren</button>
+            <div id="error-msg" class="error">Bitte gib nur gültige, durch Komma getrennte natürliche Zahlen (0, 1, 2, ...) ein.</div>
+        </div>
+
+        <div id="summary-stats">
+            </div>
+
+        <div class="chart-container">
+            <canvas id="likelihoodChart"></canvas>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Mathematische Herleitung</h2>
+        
+        <h3>1. Die Produktdichte (Likelihood-Funktion)</h3>
+        <p>
+            Die Wahrscheinlichkeitsfunktion einer einzelnen poissonverteilten Zufallsvariablen $X$ mit dem Rate-Parameter $\lambda > 0$ lautet:
+        </p>
+        <div class="math-block">
+            $$P(X = x) = \frac{\lambda^x \cdot e^{-\lambda}}{x!}$$
+        </div>
+        <p>
+            Wenn wir eine Realisation  $\mathbf{x} = (x_1, x_2, \dots, x_n) einer Stichprobe von $n$ unabhängigen und identisch verteilten (i.i.d.) Zufallsvariablen $\mathbf{X} = (X_1, \dots, X_n )$ gegeben haben,
+dann ist die gemeinsame Wahrscheinlichkeitsdichte das Produkt der Einzelwahrscheinlichkeiten. Die <strong>Likelihood-Funktion $L(\lambda)$</strong> ist also gegeben durch:
+        </p>
+        <div class="math-block">
+            $$L(\lambda; \mathbf{x}) = \prod_{i=1}^{n} \frac{\lambda^{x_i} \cdot e^{-\lambda}}{x_i!} = \frac{\lambda^{\sum_{i=1}^n x_i} \cdot e^{-n\lambda}}{\prod_{i=1}^n x_i!}$$
+        </div>
+
+        <h3>2. Die Log-Likelihood-Funktion</h3>
+        <p>
+            Da das Produkt schwer zu maximieren ist, wenden wir den natürlichen Logarithmus an. Weil der Logarithmus streng monoton steigend ist, liegt das Maximum der <strong>Log-Likelihood-Funktion $\ln L(\lambda)$</strong> an exakt derselben Stelle:
+        </p>
+        <div class="math-block">
+            $$\ln L(\lambda) = \ln\left( \lambda^{\sum_{i=1}^n x_i} \right) + \ln\left( e^{-n\lambda} \right) - \ln\left( \prod_{i=1}^n x_i! \right)$$
+            $$\ln L(\lambda) = \left(\sum_{i=1}^n x_i\right) \ln(\lambda) - n\lambda - \sum_{i=1}^n \ln(x_i!)$$
+        </div>
+
+        <h3>3. Bestimmung des Maximums (ML-Schätzer)</h3>
+        <p>
+            Wir leiten die Log-Likelihood-Funktion ab:
+        </p>
+        <div class="math-block">
+            $$\frac{d}{d\lambda} \ln L(\lambda) = \frac{\sum_{i=1}^n x_i}{\lambda} - n$$
+        </div>
+        <p>
+            Der ML-Schätzer $\hat{\lambda}$ ist eine Nullstelle der 1. Ableitung. Daher gilt:
+        </p>
+        <div class="math-block">
+            $$\frac{\sum_{i=1}^n x_i}{\hat{\lambda}} - n = 0$$
+        </div>
+        <p>
+            Auflösen nach $\hat{\lambda}$ ergibt:
+        </p>
+        <div class="math-block">
+            $$\frac{\sum_{i=1}^n x_i}{\hat{\lambda}} = n \implies \hat{\lambda} = \frac{1}{n} \sum_{i=1}^n x_i = \bar{x}$$
+        </div>
+        <p>
+            <strong>Fazit:</strong> Der ML-Schätzer kann analytisch bestimmt werden. Er ist das <strong>arithmetische Mittel</strong> $\bar{x}$ der Stichprobenwerte.
+        </p>
+    </div>
+
+    <script>
+        let myChart = null;
+
+        function factorial(num) {
+            if (num < 0) return 1;
+            let fact = 1;
+            for (let i = 1; i <= num; i++) fact *= i;
+            return fact;
+        }
+
+        function renderMath() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ],
+                    throwOnError : false
+                });
+            }
+        }
+
+        function calculateLikelihood(lambda, data) {
+            let sumX = data.reduce((a, b) => a + b, 0);
+            let n = data.length;
+            
+            let logL = sumX * Math.log(lambda) - n * lambda;
+            let logDenominator = 0;
+            for (let x of data) {
+                logDenominator += Math.log(factorial(x));
+            }
+            logL -= logDenominator;
+            
+            return Math.exp(logL);
+        }
+
+        function updateAll() {
+            const inputVal = document.getElementById('data-input').value;
+            const errorDiv = document.getElementById('error-msg');
+            
+            let data = inputVal.split(',').map(x => parseFloat(x.trim()));
+            const isValid = data.length > 0 && data.every(x => !isNaN(x) && Number.isInteger(x) && x >= 0);
+            
+            if (!isValid) {
+                errorDiv.style.display = 'block';
+                return;
+            } else {
+                errorDiv.style.display = 'none';
+            }
+
+            let n = data.length;
+            let sumX = data.reduce((a, b) => a + b, 0);
+            let mean = sumX / n;
+
+            // Sichere String-Verkettung ohne Template-Lits, damit KaTeX fehlerfrei rendert:
+            document.getElementById('summary-stats').innerHTML = 
+                '<p><strong>Aktuelle Stichprobe:</strong> Anzahl Datenpunkte ($n$) = <span class="highlight">' + n + '</span> | ' +
+                'Summe ($\\\sum x_i$) = <span class="highlight">' + sumX + '</span> | ' +
+                'Arithmetisches Mittel ($\\\overline{x}$) = <span class="highlight">' + mean.toFixed(4) + '</span></p>' +
+                '<p>Daraus folgt der empirische Maximum-Likelihood-Schätzer: <strong>$\\\hat{\\\lambda} = ' + mean.toFixed(4) + '$</strong></p>';
+            
+            renderMath();
+
+            let lambdaValues = [];
+            let likelihoodValues = [];
+            
+            let startLambda = Math.max(0.1, mean - 3);
+            let endLambda = mean + 3;
+            let step = 0.05;
+
+            if (mean === 0) {
+                startLambda = 0.01;
+                endLambda = 2;
+            }
+
+            for (let l = startLambda; l <= endLambda; l += step) {
+                lambdaValues.push(l.toFixed(2));
+                likelihoodValues.push(calculateLikelihood(l, data));
+            }
+
+            let maxLikelihood = calculateLikelihood(mean, data);
+            const ctx = document.getElementById('likelihoodChart').getContext('2d');
+            
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: lambdaValues,
+                    datasets: [
+                        {
+                            label: 'Likelihood L(λ)',
+                            data: likelihoodValues,
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                            fill: true,
+                            tension: 0.2,
+                            pointRadius: 0
+                        },
+                        {
+                            label: `Maximum (λ̂ = ${mean.toFixed(2)})`,
+                            data: [{x: mean.toFixed(2), y: maxLikelihood}],
+                            backgroundColor: '#dc3545',
+                            borderColor: '#dc3545',
+                            pointRadius: 7,
+                            pointHoverRadius: 9,
+                            showLine: false,
+                            type: 'bubble'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Parameter λ (Lambda)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Likelihood'
+                            },
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw.y ? context.raw.y.toExponential(4) : context.raw.toExponential(4)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        window.onload = function() {
+            updateAll();
+        };
+    </script>
+</body>
+</html>
+
