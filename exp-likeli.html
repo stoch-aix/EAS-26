@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLE & ZGWS Simulation für API-Antwortzeiten</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .katex-display { overflow-x: auto; overflow-y: hidden; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen">
+
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <header class="mb-8 text-center border-b border-slate-700 pb-6">
+            <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
+                Maximum-Likelihood & Zentraler Grenzwertsatz
+            </h1>
+            <p class="text-slate-400 text-lg">
+                Anwendung: Analyse der Antwortzeiten eines KI-Modells via API (Exponentialverteilung)
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="space-y-6 lg:col-span-1">
+                <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+                    <h2 class="text-xl font-bold mb-4 text-cyan-400 flex items-center gap-2">
+                        <span>⚙️</span> Parameter-Einstellungen
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">
+                                Wahrer Parameter \(\lambda\) (Rate): <span id="lambdaVal" class="text-cyan-400 font-bold">0.5</span>
+                            </label>
+                            <input type="range" id="paramLambda" min="0.1" max="2.0" step="0.05" value="0.5" 
+                                   class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                            <span class="text-xs text-slate-500">Wahre mittlere Wartezeit \(E[X] = 1/\lambda = \)<span id="trueMeanTime">2.00</span>s</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">
+                                Stichprobengröße \(n\) (API-Aufrufe): <span id="nVal" class="text-cyan-400 font-bold">30</span>
+                            </label>
+                            <input type="range" id="paramN" min="10" max="250" step="5" value="30" 
+                                   class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">
+                                Simulationsdurchläufe (\(M\)): <span id="mVal" class="text-cyan-400 font-bold">1000</span>
+                            </label>
+                            <input type="range" id="paramM" min="100" max="3000" step="100" value="1000" 
+                                   class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                        </div>
+
+                        <button id="btnSimulate" class="w-full mt-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-3 px-4 rounded-xl transition duration-200 shadow-lg cursor-pointer">
+                            Stichprobe & Simulation aktualisieren
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 space-y-4">
+                    <h2 class="text-xl font-bold text-emerald-400 flex items-center gap-2">
+                        <span>📊</span> Schätzergebnisse (Aktuelle Stichprobe)
+                    </h2>
+                    
+                    <div class="p-4 bg-slate-900/50 rounded-xl border border-slate-700">
+                        <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Erwartete Wartezeit \(\hat{E}[X]\)</p>
+                        <p class="text-3xl font-mono font-bold text-emerald-400" id="statEstMean">-</p>
+                        <p class="text-xs text-slate-500 mt-1">Arithmetisches Mittel der Stichprobe (\(\bar{x}\))</p>
+                    </div>
+
+                    <div class="p-4 bg-slate-900/50 rounded-xl border border-slate-700">
+                        <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Empirische Stichprobenvarianz (\(s^2\))</p>
+                        <p class="text-2xl font-mono font-bold text-cyan-400" id="statVar">-</p>
+                        <p class="text-xs text-slate-500 mt-1">Varianz der beobachteten Werte</p>
+                    </div>
+
+                    <div class="p-4 bg-slate-900/50 rounded-xl border border-slate-700">
+                        <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Standardfehler des Mittelwerts (\(SE\))</p>
+                        <p class="text-3xl font-mono font-bold text-amber-400" id="statSE">-</p>
+                        <p class="text-xs text-slate-500 mt-1">Asymptotisch geschätzt via \(\hat{\sigma}_{\bar{x}} = \frac{s}{\sqrt{n}}\)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-6 lg:col-span-2">
+                <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+                    <h3 class="text-lg font-bold mb-3 text-slate-200 flex items-center gap-2">
+                        <span>📋</span> Aktuelle Stichprobenwerte (\(x_i\) in Sekunden)
+                    </h3>
+                    <div id="observationsContainer" class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-28 overflow-y-auto p-3 bg-slate-900/60 rounded-xl border border-slate-700 text-xs font-mono text-cyan-300">
+                        </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+                        <h3 class="text-sm font-bold mb-2 text-slate-200">Konvergenz des Mittelwerts (\(\bar{x}_k\))</h3>
+                        <div class="h-72">
+                            <canvas id="chartTrajectory"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+                        <h3 class="text-sm font-bold mb-2 text-slate-200">Verteilung der Schätzer vs. ZGWS</h3>
+                        <div class="h-72">
+                            <canvas id="chartHistogram"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700 space-y-6">
+            <h2 class="text-2xl font-bold text-cyan-400 border-b border-slate-700 pb-3 flex items-center gap-2">
+                <span>🧮</span> Mathematische Herleitung und Varianzschätzung
+            </h2>
+            
+            <div class="space-y-4 text-slate-300 leading-relaxed">
+                <p>
+                    Die Bearbeitungszeit \(X\) der API-Aufrufe wird als exponentialverteilt angenommen mit der Dichtefunktion:
+                    \[f(x; \lambda) = \lambda e^{-\lambda x} \quad \text{für } x \ge 0\]
+                </p>
+
+                <h3 class="text-lg font-semibold text-slate-200 mt-4">1. Aufstellen der Likelihood-Funktion als Produktdichte</h3>
+                <p>
+                    Unter der Annahme, dass die API-Aufrufe unabhängig und identisch verteilt (i.i.d.) sind, multiplizieren sich die Einzeldichten zur gemeinsamen Stichproben-Likelihood \(L(\lambda)\):
+                    \[L(\lambda) = \prod_{i=1}^{n} f(x_i; \lambda) = \prod_{i=1}^{n} \lambda e^{-\lambda x_i} = \lambda^n \cdot e^{-\lambda \sum_{i=1}^{n} x_i}\]
+                </p>
+
+                <h3 class="text-lg font-semibold text-slate-200 mt-4">2. Log-Likelihood-Funktion \(\ell(\lambda)\) und Ableitung</h3>
+                <p>
+                    Der Logarithmus wandelt das Produkt in eine mathematisch leichter handhabbare Summe um:
+                    \[\ell(\lambda) = \ln L(\lambda) = n \ln(\lambda) - \lambda \sum_{i=1}^{n} x_i\]
+                    Die notwendige Bedingung für das Maximum verlangt eine Nullstelle der ersten Ableitung:
+                    \[\frac{d}{d\lambda}\ell(\lambda) \mid_{\lambda = \hat{\lambda}_{ML}} = \frac{n}{\hat \lambda_{ML}} - \sum_{i=1}^{n} x_i = 0 \implies \hat{\lambda}_{ML} = \frac{n}{\sum_{i=1}^{n} x_i} = \frac{1}{\bar{x}}\]
+                    Da der Erwartungswert einer Exponentialverteilung \(\mu = E[X] = 1/\lambda\) ist, entspricht der ML-Schätzer \(\hat{\mu}_{ML} \)  für die erwartete Wartezeit exakt dem arithmetischen Mittel \(\hat{\mu}_{ML} = \bar{x}\).
+                </p>
+
+                <h3 class="text-lg font-semibold text-slate-200 mt-4">3. Schätzung der asymptotischen Varianz und des Standardfehlers</h3>
+                <p>
+                    Nach dem Zentralen Grenzwertsatz (ZGWS) konvergiert der Stichprobenmittelwert \(\bar{x}\) bei großem \(n\) asymptotisch gegen eine Normalverteilung:
+                    \[\bar{X} \xrightarrow{d} \mathcal{N}\left(\mu, \frac{\sigma^2}{n}\right)\]
+                    Da die wahre Varianz \(\sigma^2\) der Grundgesamtheit unbekannt ist, schätzen wir sie konsistent durch die <strong>empirische Stichprobenvarianz \(s^2\)</strong> der beobachteten Werte:
+                    \[s^2 = \frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})^2\]
+                    Der geschätzte Standardfehler (\(SE\)) des Mittelwerts vereinfacht sich damit zu:
+                    \[SE = \hat{\sigma}_{\bar{x}} = \frac{s}{\sqrt{n}}\]
+                    Dieser Wert gibt die präzise Unsicherheit unserer erwarteten Wartezeit an und dient nach <em>Silverman's Rule of Thumb</em> zugleich als Skalierungsfaktor für die Bandbreite \(h\) der Kerndichteschätzung (KDE) der simulierten Mittelwerte:
+                    \[h = 1.06 \cdot SE \cdot M^{-1/5}\]
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chartT = null;
+        let chartH = null;
+
+        const sliderLambda = document.getElementById('paramLambda');
+        const sliderN = document.getElementById('paramN');
+        const sliderM = document.getElementById('paramM');
+        
+        const lblLambda = document.getElementById('lambdaVal');
+        const lblN = document.getElementById('nVal');
+        const lblM = document.getElementById('mVal');
+        const lblTrueMean = document.getElementById('trueMeanTime');
+
+        const statEstMean = document.getElementById('statEstMean');
+        const statVar = document.getElementById('statVar');
+        const statSE = document.getElementById('statSE');
+        const obsContainer = document.getElementById('observationsContainer');
+
+        sliderLambda.addEventListener('input', () => {
+            lblLambda.innerText = sliderLambda.value;
+            lblTrueMean.innerText = (1 / parseFloat(sliderLambda.value)).toFixed(2);
+        });
+        sliderN.addEventListener('input', () => lblN.innerText = sliderN.value);
+        sliderM.addEventListener('input', () => lblM.innerText = sliderM.value);
+        document.getElementById('btnSimulate').addEventListener('click', runSimulation);
+
+        function randomExponential(lambda) {
+            return -Math.log(1 - Math.random()) / lambda;
+        }
+
+        function normalDensity(x, mean, stdDev) {
+            return (1 / (stdDev * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / stdDev, 2));
+        }
+
+        function epanechnikovKernel(u) {
+            return Math.abs(u) <= 1 ? 0.75 * (1 - u * u) : 0;
+        }
+
+        // Modifizierte KDE: Berechnet die Dichte direkt an vordefinierten Stützstellen (Klassenmitten)
+        function kernelDensityEstimatorAtPoints(data, points, bandwidth) {
+            return points.map(x => {
+                let sum = 0;
+                for (let i = 0; i < data.length; i++) {
+                    sum += epanechnikovKernel((x - data[i]) / bandwidth);
+                }
+                return sum / (data.length * bandwidth);
+            });
+        }
+
+        function runSimulation() {
+            const trueLambda = parseFloat(sliderLambda.value);
+            const n = parseInt(sliderN.value);
+            const M = parseInt(sliderM.value);
+            const trueMean = 1 / trueLambda;
+
+            // 1. Eine aktuelle Stichprobe simulieren
+            let currentSample = [];
+            let sumSample = 0;
+            for(let i=0; i<n; i++) {
+                let val = randomExponential(trueLambda);
+                currentSample.push(val);
+                sumSample += val;
+            }
+
+            const sampleMean = sumSample / n;
+
+            // Empirische Stichprobenvarianz (s^2) berechnen
+            let sumSquaredDiff = 0;
+            for(let i=0; i<n; i++) {
+                sumSquaredDiff += Math.pow(currentSample[i] - sampleMean, 2);
+            }
+            const sampleVariance = sumSquaredDiff / (n - 1);
+            
+            // Asymptotischen Standardfehler des Mittelwerts schätzen via s / sqrt(n)
+            const estimatedSE = Math.sqrt(sampleVariance / n);
+
+            // KPIs & Beobachtungswerte ausgeben
+            statEstMean.innerText = sampleMean.toFixed(3) + " s";
+            statVar.innerText = sampleVariance.toFixed(3);
+            statSE.innerText = estimatedSE.toFixed(3) + " s";
+
+            obsContainer.innerHTML = currentSample
+                .map(v => `<div class="bg-slate-800 p-1 rounded text-center border border-slate-700">${v.toFixed(3)}</div>`)
+                .join('');
+
+            // ----------------------------------------------------
+            // DIAGRAMM 1: Trajektorie (Laufender Mittelwert)
+            // ----------------------------------------------------
+            const trajectoryLabels = [];
+            const trajectoryValues = [];
+            let runningSum = 0;
+            for(let i = 0; i < n; i++) {
+                runningSum += currentSample[i];
+                trajectoryLabels.push(i + 1);
+                trajectoryValues.push(runningSum / (i + 1));
+            }
+            updateTrajectoryChart(trajectoryLabels, trajectoryValues, trueMean);
+
+            // ----------------------------------------------------
+            // DIAGRAMM 2: M Schätzungen simulieren (Histogramm, KDE & ZGWS)
+            // ----------------------------------------------------
+            let simulatedMeans = [];
+            for(let m = 0; m < M; m++) {
+                let sSum = 0;
+                for(let i = 0; i < n; i++) {
+                    sSum += randomExponential(trueLambda);
+                }
+                simulatedMeans.push(sSum / n);
+            }
+
+            // Histogramm-Klassen (Bins) aufsetzen
+            const minM = Math.min(...simulatedMeans);
+            const maxM = Math.max(...simulatedMeans);
+            const binCount = 30; 
+            const binWidth = (maxM - minM) / binCount;
+            
+            let bins = Array(binCount).fill(0);
+            let binCenters = [];
+            for(let i=0; i<binCount; i++) {
+                binCenters.push(minM + (i + 0.5) * binWidth);
+            }
+
+            simulatedMeans.forEach(val => {
+                let binIdx = Math.floor((val - minM) / binWidth);
+                if(binIdx >= binCount) binIdx = binCount - 1;
+                if(binIdx < 0) binIdx = 0;
+                bins[binIdx]++;
+            });
+
+            // Histogrammdichten berechnen (Flächennormierung)
+            let binDensities = bins.map(count => count / (M * binWidth));
+
+            // KDE-Bandbreite nach Silverman basierend auf dem geschätzten SE berechnen
+            const bandwidth = 1.06 * estimatedSE * Math.pow(M, -0.2);
+
+            // KDE und theoretisches ZGWS exakt an denselben Klassenmitten auswerten
+            const kdeDensities = kernelDensityEstimatorAtPoints(simulatedMeans, binCenters, bandwidth);
+            const zgwsDensities = binCenters.map(x => normalDensity(x, trueMean, estimatedSE));
+
+            updateHistogramChart(binCenters, binDensities, kdeDensities, zgwsDensities);
+        }
+
+        function updateTrajectoryChart(labels, data, trueMean) {
+            if(chartT) chartT.destroy();
+            chartT = new Chart(document.getElementById('chartTrajectory'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Laufender Mittelwert (x̄_k)',
+                        data: data,
+                        borderColor: '#34d399',
+                        borderWidth: 2,
+                        pointRadius: labels.length > 60 ? 0 : 2,
+                        tension: 0.1
+                    }, {
+                        label: `Wahrer Erwartungswert (1/λ = ${trueMean.toFixed(2)}s)`,
+                        data: Array(labels.length).fill(trueMean),
+                        borderColor: '#f43f5e',
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#94a3b8' } } },
+                    scales: {
+                        x: { title: { display: true, text: 'Anzahl beobachteter API-Aufrufe (k)', color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        y: { title: { display: true, text: 'Zeit (Sekunden)', color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+
+        function updateHistogramChart(binCenters, histogramData, kdeData, zgwsData) {
+            if(chartH) chartH.destroy();
+
+            const labels = binCenters.map(v => v.toFixed(2));
+
+            chartH = new Chart(document.getElementById('chartHistogram'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'Simulierte Verteilung (Histogramm)',
+                            data: histogramData,
+                            backgroundColor: 'rgba(148, 163, 184, 0.25)',
+                            borderColor: 'rgba(148, 163, 184, 0.5)',
+                            borderWidth: 1,
+                            barPercentage: 1.0,
+                            categoryPercentage: 1.0,
+                            order: 3
+                        },
+                        {
+                            type: 'line',
+                            label: 'Kerndichteschätzung (KDE)',
+                            data: kdeData,
+                            borderColor: '#fbbf24',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.4,
+                            order: 2
+                        },
+                        {
+                            type: 'line',
+                            label: 'Asymptotischer ZGWS (empirisch)',
+                            data: zgwsData,
+                            borderColor: '#c084fc',
+                            borderWidth: 2.5,
+                            borderDash: [4, 4],
+                            pointRadius: 0,
+                            tension: 0.4,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { labels: { color: '#94a3b8' } }
+                    },
+                    scales: {
+                        x: { 
+                            title: { display: true, text: 'Geschätzte mittlere Wartezeit (s)', color: '#94a3b8' },
+                            grid: { display: false }, 
+                            ticks: { color: '#94a3b8', maxTicksLimit: 10 } 
+                        },
+                        y: { 
+                            title: { display: true, text: 'Dichte', color: '#94a3b8' },
+                            grid: { color: '#334155' }, 
+                            ticks: { color: '#94a3b8' } 
+                        }
+                    }
+                }
+            });
+        }
+
+        window.onload = function() {
+            setTimeout(() => {
+                if(typeof renderMathInElement === 'function') {
+                    renderMathInElement(document.body);
+                }
+                runSimulation();
+            }, 100);
+        };
+    </script>
+</body>
+</html>
+
