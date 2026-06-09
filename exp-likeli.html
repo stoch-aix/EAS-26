@@ -144,8 +144,8 @@
 
                 <h3 class="text-lg font-semibold text-slate-200 mt-4">3. Schätzung der asymptotischen Varianz und des Standardfehlers</h3>
                 <p>
-                    Nach dem Zentralen Grenzwertsatz (ZGWS) konvergiert der Stichprobenmittelwert \(\bar{x}\) bei großem \(n\) asymptotisch gegen eine Normalverteilung:
-                    \[\bar{X} \xrightarrow{d} \mathcal{N}\left(\mu, \frac{\sigma^2}{n}\right)\]
+                    Nach dem Zentralen Grenzwertsatz (ZGWS) konvergiert der Stichprobenmittelwert \(\bar{x}\) für \(n \to \infty \) gegen eine Normalverteilung:
+                    \[ \sqrt{n}( \bar{X} - \mu) \xrightarrow{d} \mathcal{N}\left(0, \sigma^2 \right) \]
                     Da die wahre Varianz \(\sigma^2\) der Grundgesamtheit unbekannt ist, schätzen wir sie konsistent durch die <strong>empirische Stichprobenvarianz \(s^2\)</strong> der beobachteten Werte:
                     \[s^2 = \frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})^2\]
                     Der geschätzte Standardfehler (\(SE\)) des Mittelwerts vereinfacht sich damit zu:
