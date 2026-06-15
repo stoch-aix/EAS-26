@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bias-Varianz Trade-Off und MSE in Anwendungen</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <style>
+        .math-block { overflow-x: auto; padding: 0.5rem 0; min-height: 2rem; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+    <header class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white py-10 px-6 shadow-md text-center">
+        <div class="max-w-5xl mx-auto">
+            <h1 class="text-4xl font-extrabold tracking-tight mb-3">Bias-Varianz Trade-Off und MSE in Anwendungen</h1>
+            <p class="text-indigo-200 text-lg max-w-2xl mx-auto">
+                Eine interaktive Demonstration grundlegender Schätzkonzepte anhand praktischer Anwendungsfälle aus Deep Learning, Computergrafik und statistischer Modellierung.
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8 space-y-12">
+        
+        <section class="bg-white p-6 rounded-xl shadow-xs border border-slate-200">
+            <h2 class="text-2xl font-bold text-slate-900 mb-4 border-b pb-2 border-slate-100">Mathematische Kernkonzepte</h2>
+            <p class="mb-4 leading-relaxed">
+                In der Informatik und Statistik wollen wir oft einen unbekannten wahren Parameter <span class="math-inline">\theta</span> einer Verteilung mithilfe von Datenpunkten schätzen. Ein <strong>Schätzer</strong> <span class="math-inline">\hat{\theta}</span> ist eine Funktion dieser Datenpunkte. Seine Qualität wird durch drei Dimensionen beschrieben:
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+                <div class="bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                    <h3 class="font-bold text-blue-900 text-lg mb-1">Bias (Verzerrung)</h3>
+                    <p class="text-sm text-slate-600 mb-2">Misst die systematische Abweichung des Erwartungswerts vom wahren Wert.</p>
+                    <div class="math-block text-sm font-semibold text-center py-2" id="formula-bias"></div>
+                    <p class="text-xs text-slate-500 mt-1">Ist der Bias gleich 0, heißt der Schätzer <strong>erwartungstreu</strong>.</p>
+                </div>
+                <div class="bg-emerald-50/50 p-4 rounded-lg border border-emerald-100">
+                    <h3 class="font-bold text-emerald-900 text-lg mb-1">Varianz</h3>
+                    <p class="text-sm text-slate-600 mb-2">Misst die Streuung oder Instabilität des Schätzers um seinen eigenen Erwartungswert.</p>
+                    <div class="math-block text-sm font-semibold text-center py-2" id="formula-variance"></div>
+                    <p class="text-xs text-slate-500 mt-1">Hohe Varianz bedeutet hohe Empfindlichkeit gegenüber statistischem Rauschen.</p>
+                </div>
+                <div class="bg-purple-50/50 p-4 rounded-lg border border-purple-100">
+                    <h3 class="font-bold text-purple-900 text-lg mb-1">MSE (Mittlerer quadratischer Fehler)</h3>
+                    <p class="text-sm text-slate-600 mb-2">Der Gesamtschätzfehler, welcher die quadratische Abweichung zum wahren Wert misst.</p>
+                    <div class="math-block text-sm font-semibold text-center py-2" id="formula-mse"></div>
+                    <p class="text-xs text-slate-500 mt-1">Das fundamentale Ziel ist die Minimierung des MSE.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-xl shadow-xs border border-slate-200 space-y-6">
+            <div>
+                <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full uppercase">Beispiel 1: Deep Learning</span>
+                <h2 class="text-2xl font-bold text-slate-900 mt-2">Mini-Batch Varianzschätzung bei der Batch-Normalisierung</h2>
+            </div>
+            <div class="text-slate-600 space-y-3">
+                <p>
+                    Bei der <strong>Batch-Normalization</strong> in tiefen neuronalen Netzen wird jedes Feature über ein Mini-Batch der Größe <span class="math-inline">n</span> normalisiert. Hierzu muss die Varianz <span class="math-inline">\sigma^2</span> des aktuellen Batches geschätzt werden. 
+                </p>
+                <p>
+                    Standardmäßig verwenden Frameworks wie PyTorch während des Trainings die <em>empirische Varianz</em> (verzerrt), korrigieren diese jedoch für die globalen Statistiken mittels der <em>korrigierten Stichprobenvarianz</em> (erwartungstreu):
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg text-sm border border-slate-100">
+                    <div>
+                        <span class="font-semibold text-amber-700">Verzerrter Schätzer (Biased, <span class="math-inline">1/n</span>):</span>
+                        <div class="py-2 text-center" id="formula-ex1-biased"></div>
+                    </div>
+                    <div>
+                        <span class="font-semibold text-indigo-700">Erwartungstreuer Schätzer (Unbiased, <span class="math-inline">1/(n-1)</span>):</span>
+                        <div class="py-2 text-center" id="formula-ex1-unbiased"></div>
+                    </div>
+                </div>
+                <p class="text-xs italic text-slate-500">
+                    Da der Batch-Mittelwert <span class="math-inline">\bar{x}</span> selbst aus den Daten geschätzt wird, geht ein Freiheitsgrad verloren. Der verzerrte Schätzer unterschätzt die wahre Varianz im Schnitt um den Faktor <span class="math-inline">\frac{n-1}{n}</span>.
+                </p>
+            </div>
+
+            <div class="bg-slate-100 p-4 rounded-xl grid grid-cols-1 sm:grid-cols-3 gap-4 items-end text-sm">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Batch-Größe (<span class="math-inline">n</span>):</label>
+                    <input id="ex1-n" type="number" value="4" min="2" max="50" class="w-full bg-white border border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Simulationen (<span class="math-inline">N_{\text{sim}}</span>):</label>
+                    <input id="ex1-nsim" type="number" value="5000" min="100" max="20000" class="w-full bg-white border border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500">
+                </div>
+                <button onclick="runExample1()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow-xs transition">Simulieren</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="overflow-x-auto lg:col-span-1">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-500 text-xs uppercase">
+                                <th class="py-2">Metrik</th>
+                                <th class="py-2 text-amber-700">Verzerrt </th>
+                                <th class="py-2 text-indigo-700">Erwartungstreu</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700 font-mono">
+                            <tr><td class="py-2 font-sans text-slate-500">Wahrer Wert (<span class="math-inline">\sigma^2</span>)</td><td colspan="2" class="py-2 text-center font-bold text-slate-900">4.0000</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">Empir. Mittel <span class="math-inline">\mathbb{E}[\hat{\sigma}^2]</span></td><td id="ex1-mean-b" class="py-2">-</td><td id="ex1-mean-u" class="py-2">-</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">Bias</td><td id="ex1-bias-b" class="py-2">-</td><td id="ex1-bias-u" class="py-2">-</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">Varianz</td><td id="ex1-var-b" class="py-2">-</td><td id="ex1-var-u" class="py-2">-</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">MSE</td><td id="ex1-mse-b" class="py-2 font-bold">-</td><td id="ex1-mse-u" class="py-2 font-bold">-</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="mt-4 p-3 bg-slate-50 rounded text-xs text-slate-500 space-y-1">
+                        <p><strong>Beobachtung:</strong> Der erwartungstreue Schätzer hat Bias 0. Allerdings: Bei sehr kleinen Batches (<span class="math-inline">n=3</span> oder <span class="math-inline">n=4</span>) hat der verzerrte Schätzer oft einen <em>geringeren</em> MSE, da seine Varianz stark reduziert ist! Dies veranschaulicht den klassischen Bias-Varianz-Tradeoff.</p>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 h-64 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <canvas id="chart-ex1"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-xl shadow-xs border border-slate-200 space-y-6">
+            <div>
+                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full uppercase">Beispiel 2: Computergrafik</span>
+                <h2 class="text-2xl font-bold text-slate-900 mt-2">Monte-Carlo-Path-Tracing & "Firefly Clamping"</h2>
+            </div>
+            <div class="text-slate-600 space-y-3">
+                <p>
+                    Beim Rendern mittels <strong>Path Tracing</strong> wird die Lichtintensität eines Pixels durch das Heraussenden zufälliger Lichtstrahlen (Monte-Carlo-Integration) geschätzt. In Szenen mit extrem hellen Lichtquellen kommt es zu vereinzelten Strahlen mit gigantischer Intensität. Diese erzeugen extremes Rauschen im Bild, sogenannte <strong>"Fireflies"</strong> (weiße Pixelfehler).
+                </p>
+                <p>
+                    Der Standard-Monte-Carlo-Schätzer ist mathematisch vollkommen <strong>erwartungstreu</strong>, hat aber eine extrem hohe Varianz. Moderne Render-Engines nutzen daher <strong>Clamping</strong> (Abschneiden der maximalen Strahlintensität auf ein Limit <span class="math-inline">C</span>). Dies führt zu einer künstlichen <strong>Verzerrung (Bias)</strong>, eliminiert aber die "Fireflies" (drastische Varianzreduktion).
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg text-sm border border-slate-100">
+                    <div>
+                        <span class="font-semibold text-indigo-700">Reines Monte Carlo (Erwartungstreu):</span>
+                        <div class="py-2 text-center" id="formula-ex2-unbiased"></div>
+                    </div>
+                    <div>
+                        <span class="font-semibold text-amber-700">Geklamptes Monte Carlo (Verzerrt):</span>
+                        <div class="py-2 text-center" id="formula-ex2-biased"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-100 p-4 rounded-xl grid grid-cols-1 sm:grid-cols-4 gap-4 items-end text-sm">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Strahlen pro Pixel (<span class="math-inline">n</span>):</label>
+                    <input id="ex2-n" type="number" value="16" min="4" max="256" class="w-full bg-white border border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Clamping-Limit (<span class="math-inline">C</span>):</label>
+                    <input id="ex2-c" type="number" value="6" min="1" max="50" class="w-full bg-white border border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Simulationen (<span class="math-inline">N_{\text{sim}}</span>):</label>
+                    <input id="ex2-nsim" type="number" value="5000" min="100" max="20000" class="w-full bg-white border border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500">
+                </div>
+                <button onclick="runExample2()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow-xs transition">Simulieren</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="overflow-x-auto lg:col-span-1">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-500 text-xs uppercase">
+                                <th class="py-2">Metrik</th>
+                                <th class="py-2 text-indigo-700">Reines MC</th>
+                                <th class="py-2 text-amber-700">Geklampt (Bias)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700 font-mono">
+                            <tr><td class="py-2 font-sans text-slate-500">Wahre Helligkeit</td><td id="ex2-true" colspan="2" class="py-2 text-center font-bold text-slate-900">-</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">Mittelwert <span class="math-inline">\mathbb{E}[\hat{I}]</span></td><td id="ex2-mean-u" class="py-2">-</td><td id="ex2-mean-b" class="py-2">-</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">Bias</td><td id="ex2-bias-u" class="py-2">-</td><td id="ex2-bias-b" class="py-2">-</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">Varianz</td><td id="ex2-var-u" class="py-2">-</td><td id="ex2-var-b" class="py-2">-</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">MSE</td><td id="ex2-mse-u" class="py-2 font-bold">-</td><td id="ex2-mse-b" class="py-2 font-bold">-</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="mt-4 p-3 bg-slate-50 rounded text-xs text-slate-500 space-y-1">
+                        <p><strong>Beobachtung:</strong> Aufgrund weit streuender Lichtwerte hat das ungeklampte MC eine extrem hohe Varianz. Der geklampte Schätzer unterschätzt zwar das Licht systematisch (negativer Bias), bricht aber die Varianz so radikal, dass sein <strong>Gesamtfehler (MSE) dramatisch kleiner</strong> ist!</p>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 h-64 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <canvas id="chart-ex2"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-xl shadow-xs border border-slate-200 space-y-6">
+            <div>
+                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full uppercase">Beispiel 3: Statistische Modellierung</span>
+                <h2 class="text-2xl font-bold text-slate-900 mt-2">k-NN Erwartungswertschätzung im lokalen Signalmodell</h2>
+            </div>
+            <div class="text-slate-600 space-y-3">
+                <p>
+                    Wir betrachten das Signalmodell <span class="math-inline">Y_i = \mu_i + \epsilon_i</span>, wobei <span class="math-inline">\mu_i</span> die unbekannten lokalen Signalmittelwerte sind und <span class="math-inline">\epsilon_i</span> ein unabhängiges normalverteiltes Rauschen mit Mittelwert Null darstellt. Wir wollen den Erwartungswert an einer zentralen Zielposition <span class="math-inline">i_0</span> schätzen (wahrer Wert <span class="math-inline">\mu_{i_0} = 4.0</span>). Die Nachbarpunkte fallen stufenweise im wahren Signalniveau ab (<span class="math-inline">\mu_i < \mu_{i_0}</span>), je weiter sie entfernt sind.
+                </p>
+                <p>
+                    Wir nutzen einen k-NN-Ansatz, um den Wert an Position <span class="math-inline">i_0</span> aus beobachteten verrauschten Signalen <span class="math-inline">Y_i</span> zu schätzen:
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg text-sm border border-slate-100">
+                    <div>
+                        <span class="font-semibold text-indigo-700">1-NN Schätzer (Geringer Bias, Hohe Varianz):</span>
+                        <p class="text-xs mt-1 text-slate-500"><strong>Picke</strong> ausschließlich den allernächsten Punkt. Da <span class="math-inline">\mu_{i_0} = 4.0</span> exakt getroffen wird, ist der Schätzer im Mittel erwartungstreu. Er absorbiert jedoch das volle statistische Rauschen <span class="math-inline">\epsilon_i</span> dieses einzelnen Punktes.</p>
+                    </div>
+                    <div>
+                        <span class="font-semibold text-amber-700">k-NN Schätzer mit großem k (Hoher Bias, Geringe Varianz):</span>
+                        <p class="text-xs mt-1 text-slate-500">Mittelt über <span class="math-inline">k</span> umliegende Punkte. Das Rauschen wird perfekt geglättet (niedrige Varianz), aber da die umliegenden Punkte systematisch kleinere Signalwerte besitzen, zieht die Mittelung den Schätzer nach unten (hoher Bias).</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-100 p-4 rounded-xl grid grid-cols-1 sm:grid-cols-4 gap-4 items-end text-sm">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Nachbarn großes k:</label>
+                    <input id="ex3-k" type="number" value="12" min="3" max="25" class="w-full bg-white border border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Rauschen <span class="math-inline">\sigma_{\text{noise}}</span>:</label>
+                    <input id="ex3-noise" type="number" value="0.8" step="0.1" min="0.1" max="2.0" class="w-full bg-white border border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Simulationen (<span class="math-inline">N_{\text{sim}}</span>):</label>
+                    <input id="ex3-nsim" type="number" value="4000" min="100" max="10000" class="w-full bg-white border border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500">
+                </div>
+                <button onclick="runExample3()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow-xs transition">Simulieren</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="overflow-x-auto lg:col-span-1">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-500 text-xs uppercase">
+                                <th class="py-2">Metrik</th>
+                                <th class="py-2 text-indigo-700">1-NN</th>
+                                <th class="py-2 text-amber-700">k-NN (k = <span id="lbl-ex3-k">12</span>)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700 font-mono">
+                            <tr><td class="py-2 font-sans text-slate-500">Wahrer Wert <span class="math-inline">\mu_{i_0}</span></td><td colspan="2" class="py-2 text-center font-bold text-slate-900">4.0000</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">Mittelwert <span class="math-inline">\mathbb{E}[\hat{y}]</span></td><td id="ex3-mean-u" class="py-2">-</td><td id="ex3-mean-b" class="py-2">-</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">Bias</td><td id="ex3-bias-u" class="py-2">-</td><td id="ex3-bias-b" class="py-2">-</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">Varianz</td><td id="ex3-var-u" class="py-2">-</td><td id="ex3-var-b" class="py-2">-</td></tr>
+                            <tr><td class="py-2 font-sans text-slate-500">MSE</td><td id="ex3-mse-u" class="py-2 font-bold">-</td><td id="ex3-mse-b" class="py-2 font-bold">-</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="mt-4 p-3 bg-slate-50 rounded text-xs text-slate-500 space-y-1">
+                        <p><strong>Beobachtung:</strong> 1-NN trifft im Mittel exakt das Ziel (Bias nahe 0), schwankt aber aufgrund des vollen Rauschens wild. Ein größeres <span class="math-inline">k</span> unterdrückt das Rauschen stark (niedrige Varianz), fängt sich jedoch durch das Einbeziehen der abweichenden äußeren Signalstufen einen systematischen Bias ein. Je nach Höhe des Rauschens optimiert ein mittleres oder größeres <span class="math-inline">k</span> den MSE.</p>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 h-64 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <canvas id="chart-ex3"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-slate-900 text-slate-100 p-8 rounded-2xl shadow-xl border border-slate-800 space-y-6">
+            <h2 class="text-3xl font-bold tracking-tight text-white border-b pb-3 border-slate-800">
+                Formale Herleitung der MSE-Zerlegung
+            </h2>
+            <div class="text-slate-300 leading-relaxed space-y-4 text-base">
+                <p>
+                    Der Mittlere Quadratische Fehler (<span class="math-inline">\text{MSE}</span>) vereint Verzerrung und Instabilität mathematisch in einer eleganten Identität. Sei <span class="math-inline">\hat{\theta}</span> ein Schätzer für den konstanten Parameter <span class="math-inline">\theta</span>. 
+                </p>
+                <p>
+                    Wir starten mit der formalen Definition des <span class="math-inline">\text{MSE}</span> und fügen innerhalb des Quadrats den künstlichen Term <span class="math-inline">\pm \mathbb{E}[\hat{\theta}]</span> hinzu:
+                </p>
+                <div class="bg-slate-950 p-4 rounded-xl font-mono text-sm tracking-wide text-indigo-300 shadow-inner text-center" id="derive-step1"></div>
+                <p>
+                    Wenden wir nun die erste Binomische Formel <span class="math-inline">(a+b)^2 = a^2 + 2ab + b^2</span> auf das Argument an, wobei <span class="math-inline">a = \hat{\theta} - \mathbb{E}[\hat{\theta}]</span> und <span class="math-inline">b = \mathbb{E}[\hat{\theta}] - \theta</span>:
+                </p>
+                <div class="bg-slate-950 p-4 rounded-xl font-mono text-sm tracking-wide text-indigo-300 shadow-inner text-center" id="derive-step2"></div>
+                <p>
+                    Aufgrund der <strong>Linearität des Erwartungswerts</strong> können wir die Erwartungsbildung auf jeden Summanden einzeln anwenden:
+                </p>
+                <div class="bg-slate-950 p-4 rounded-xl font-mono text-sm tracking-wide text-indigo-300 shadow-inner text-center" id="derive-step3"></div>
+                <p>
+                    Wir analysieren die drei entstehenden Terme nun Schritt für Schritt:
+                </p>
+                <ol class="list-decimal list-inside space-y-4 pl-2 bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+                    <li>
+                        <strong class="text-white">Der erste Term</strong> entspricht exakt der Definition der Varianz des Schätzers:
+                        <div class="text-emerald-400 py-1 text-center" id="derive-term1"></div>
+                    </li>
+                    <li>
+                        <strong class="text-white">Der dritte Term</strong> ist eine deterministische Konstante, da sowohl <span class="math-inline">\theta</span> als auch der Erwartungswert <span class="math-inline">\mathbb{E}[\hat{\theta}]</span> feste Werte (keine Zufallsvariablen) sind. Der äußere Erwartungswert hat somit keinen Effekt. Dies ist der quadrierte Bias:
+                        <div class="text-amber-400 py-1 text-center" id="derive-term2"></div>
+                    </li>
+                    <li>
+                        <strong class="text-white">Der mittlere Term (Kreuzterm)</strong> verschwindet vollständig zu Null. Da der Faktor <span class="math-inline">2\big(\mathbb{E}[\hat{\theta}] - \theta\big)</span> konstant ist, darf er vor den Erwartungswert gezogen werden:
+                        <div class="py-1 text-center" id="derive-term3-part1"></div>
+                        Wegen der Linearität gilt <span class="math-inline">\mathbb{E}\left[\hat{\theta} - \mathbb{E}[\hat{\theta}]\right] = \mathbb{E}[\hat{\theta}] - \mathbb{E}[\hat{\theta}] = 0</span>. Somit wird der gesamte Kreuzterm zu Null:
+                        <div class="text-red-400 py-1 text-center" id="derive-term3-part2"></div>
+                    </li>
+                </ol>
+                <p class="pt-4 text-center text-lg font-bold text-white border-t border-slate-800">
+                    Zusammengefügt erhalten wir das fundamentale Theorem der Schätztheorie:
+                </p>
+                <div class="bg-gradient-to-r from-emerald-950 to-indigo-950 border border-indigo-500/30 p-6 rounded-xl text-center text-xl font-extrabold text-white tracking-wide shadow-md" id="derive-final"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-slate-200 text-center py-6 text-xs text-slate-500 border-t border-slate-300">
+        Erzeugt mit interaktiver Chart-Visualisierung &amp; KaTeX mathematischer Formatierung ohne rohe Begrenzer-Ausgaben.
+    </footer>
+
+    <script>
+        let chart1 = null, chart2 = null, chart3 = null;
+
+        const verticalLinePlugin = {
+            id: 'verticalLine',
+            afterDraw: (chart) => {
+                if (chart.config.options.plugins && chart.config.options.plugins.verticalLine) {
+                    const val = chart.config.options.plugins.verticalLine.value;
+                    const xAxis = chart.scales.x;
+                    const yAxis = chart.scales.y;
+                    
+                    const labels = chart.data.labels.map(Number);
+                    let closestIdx = 0;
+                    let minDiff = Math.abs(labels[0] - val);
+                    for(let i = 1; i < labels.length; i++) {
+                        let diff = Math.abs(labels[i] - val);
+                        if(diff < minDiff) {
+                            minDiff = diff;
+                            closestIdx = i;
+                        }
+                    }
+                    
+                    const xPixel = xAxis.getPixelForValue(closestIdx);
+                    const ctx = chart.ctx;
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(xPixel, yAxis.top);
+                    ctx.lineTo(xPixel, yAxis.bottom);
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.setLineDash([6, 4]);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        };
+        Chart.register(verticalLinePlugin);
+
+        function randomNormal(mean = 0, stdev = 1) {
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random(); 
+            while(v === 0) v = Math.random();
+            let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+            return num * stdev + mean;
+        }
+
+        function binData(dataA, dataB, min, max, binCount) {
+            const step = (max - min) / binCount;
+            const binsA = new Array(binCount).fill(0);
+            const binsB = new Array(binCount).fill(0);
+            const labels = [];
+            
+            for(let i = 0; i < binCount; i++) {
+                labels.push((min + (i + 0.5) * step).toFixed(2));
+            }
+            
+            dataA.forEach(v => {
+                let idx = Math.floor((v - min) / step);
+                if (idx < 0) idx = 0;
+                if (idx >= binCount) idx = binCount - 1;
+                binsA[idx]++;
+            });
+            
+            dataB.forEach(v => {
+                let idx = Math.floor((v - min) / step);
+                if (idx < 0) idx = 0;
+                if (idx >= binCount) idx = binCount - 1;
+                binsB[idx]++;
+            });
+            
+            return { labels, binsA, binsB };
+        }
+
+        function analyzeEstimator(arr, trueVal) {
+            const N = arr.length;
+            const mean = arr.reduce((a, b) => a + b, 0) / N;
+            const bias = mean - trueVal;
+            const variance = arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / N;
+            const mse = arr.reduce((a, b) => a + Math.pow(b - trueVal, 2), 0) / N;
+            return { mean, bias, variance, mse };
+        }
+
+        function runExample1() {
+            const n = parseInt(document.getElementById('ex1-n').value) || 4;
+            const nSim = parseInt(document.getElementById('ex1-nsim').value) || 5000;
+            const trueVar = 4.0;
+
+            const estimatesBiased = [];
+            const estimatesUnbiased = [];
+
+            for(let s = 0; s < nSim; s++) {
+                let samples = [];
+                let sum = 0;
+                for(let i = 0; i < n; i++) {
+                    let val = randomNormal(0, Math.sqrt(trueVar));
+                    samples.push(val);
+                    sum += val;
+                }
+                let mean = sum / n;
+                
+                let sqSum = 0;
+                for(let i = 0; i < n; i++) {
+                    sqSum += Math.pow(samples[i] - mean, 2);
+                }
+                
+                estimatesBiased.push(sqSum / n);
+                estimatesUnbiased.push(sqSum / (n - 1));
+            }
+
+            const statsB = analyzeEstimator(estimatesBiased, trueVar);
+            const statsU = analyzeEstimator(estimatesUnbiased, trueVar);
+
+            document.getElementById('ex1-mean-b').innerText = statsB.mean.toFixed(4);
+            document.getElementById('ex1-bias-b').innerText = (statsB.bias >= 0 ? '+' : '') + statsB.bias.toFixed(4);
+            document.getElementById('ex1-var-b').innerText = statsB.variance.toFixed(4);
+            document.getElementById('ex1-mse-b').innerText = statsB.mse.toFixed(4);
+
+            document.getElementById('ex1-mean-u').innerText = statsU.mean.toFixed(4);
+            document.getElementById('ex1-bias-u').innerText = (statsU.bias >= 0 ? '+' : '') + statsU.bias.toFixed(4);
+            document.getElementById('ex1-var-u').innerText = statsU.variance.toFixed(4);
+            document.getElementById('ex1-mse-u').innerText = statsU.mse.toFixed(4);
+
+            const binned = binData(estimatesBiased, estimatesUnbiased, 0, 12, 30);
+            
+            if(chart1) chart1.destroy();
+            const ctx = document.getElementById('chart-ex1').getContext('2d');
+            chart1 = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: binned.labels,
+                    datasets: [
+                        { label: 'Verzerrt (1/n)', data: binned.binsA, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.15)', fill: true, tension: 0.3 },
+                        { label: 'Erwartungstreu', data: binned.binsB, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.15)', fill: true, tension: 0.3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { display: false } },
+                    plugins: {
+                        verticalLine: { value: trueVar },
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        }
+
+        function runExample2() {
+            const n = parseInt(document.getElementById('ex2-n').value) || 16;
+            const clampC = parseFloat(document.getElementById('ex2-c').value) || 6.0;
+            const nSim = parseInt(document.getElementById('ex2-nsim').value) || 5000;
+            
+            const mu = 0.8;
+            const sigma = 0.8;
+            const trueMean = Math.exp(mu + (sigma * sigma) / 2.0);
+            
+            document.getElementById('ex2-true').innerText = trueMean.toFixed(4);
+
+            const estimatesPure = [];
+            const estimatesClamp = [];
+
+            for(let s = 0; s < nSim; s++) {
+                let sumPure = 0;
+                let sumClamp = 0;
+                for(let i = 0; i < n; i++) {
+                    let logSample = Math.exp(randomNormal(mu, sigma));
+                    sumPure += logSample;
+                    sumClamp += Math.min(logSample, clampC);
+                }
+                estimatesPure.push(sumPure / n);
+                estimatesClamp.push(sumClamp / n);
+            }
+
+            const statsP = analyzeEstimator(estimatesPure, trueMean);
+            const statsC = analyzeEstimator(estimatesClamp, trueMean);
+
+            document.getElementById('ex2-mean-u').innerText = statsP.mean.toFixed(4);
+            document.getElementById('ex2-bias-u').innerText = (statsP.bias >= 0 ? '+' : '') + statsP.bias.toFixed(4);
+            document.getElementById('ex2-var-u').innerText = statsP.variance.toFixed(4);
+            document.getElementById('ex2-mse-u').innerText = statsP.mse.toFixed(4);
+
+            document.getElementById('ex2-mean-b').innerText = statsC.mean.toFixed(4);
+            document.getElementById('ex2-bias-b').innerText = (statsC.bias >= 0 ? '+' : '') + statsC.bias.toFixed(4);
+            document.getElementById('ex2-var-b').innerText = statsC.variance.toFixed(4);
+            document.getElementById('ex2-mse-b').innerText = statsC.mse.toFixed(4);
+
+            const binned = binData(estimatesPure, estimatesClamp, 0, 8, 30);
+            
+            if(chart2) chart2.destroy();
+            const ctx = document.getElementById('chart-ex2').getContext('2d');
+            chart2 = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: binned.labels,
+                    datasets: [
+                        { label: 'Reines MC', data: binned.binsA, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.15)', fill: true, tension: 0.3 },
+                        { label: 'Geklampt', data: binned.binsB, borderColor: '#ec4899', backgroundColor: 'rgba(236, 72, 153, 0.15)', fill: true, tension: 0.3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { display: false } },
+                    plugins: {
+                        verticalLine: { value: trueMean },
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        }
+
+        function runExample3() {
+            const kMax = parseInt(document.getElementById('ex3-k').value) || 12;
+            const noiseStd = parseFloat(document.getElementById('ex3-noise').value) || 0.8;
+            const nSim = parseInt(document.getElementById('ex3-nsim').value) || 4000;
+            
+            document.getElementById('lbl-ex3-k').innerText = kMax;
+            const trueTargetMu = 4.0;
+
+            const estimatesK1 = [];
+            const estimatesKMax = [];
+
+            for(let s = 0; s < nSim; s++) {
+                let samples = [];
+                for(let i = 0; i < kMax; i++) {
+                    let mu_i = trueTargetMu - (i * 0.15); 
+                    let y_i = mu_i + randomNormal(0, noiseStd);
+                    samples.push(y_i);
+                }
+                
+                estimatesK1.push(samples[0]);
+                
+                let sumKMax = 0;
+                for(let i = 0; i < kMax; i++) {
+                    sumKMax += samples[i];
+                }
+                estimatesKMax.push(sumKMax / kMax);
+            }
+
+            const statsK1 = analyzeEstimator(estimatesK1, trueTargetMu);
+            const statsKMax = analyzeEstimator(estimatesKMax, trueTargetMu);
+
+            document.getElementById('ex3-mean-u').innerText = statsK1.mean.toFixed(4);
+            document.getElementById('ex3-bias-u').innerText = (statsK1.bias >= 0 ? '+' : '') + statsK1.bias.toFixed(4);
+            document.getElementById('ex3-var-u').innerText = statsK1.variance.toFixed(4);
+            document.getElementById('ex3-mse-u').innerText = statsK1.mse.toFixed(4);
+
+            document.getElementById('ex3-mean-b').innerText = statsKMax.mean.toFixed(4);
+            document.getElementById('ex3-bias-b').innerText = (statsKMax.bias >= 0 ? '+' : '') + statsKMax.bias.toFixed(4);
+            document.getElementById('ex3-var-b').innerText = statsKMax.variance.toFixed(4);
+            document.getElementById('ex3-mse-b').innerText = statsKMax.mse.toFixed(4);
+
+            const binned = binData(estimatesK1, estimatesKMax, 1, 7, 30);
+            
+            if(chart3) chart3.destroy();
+            const ctx = document.getElementById('chart-ex3').getContext('2d');
+            chart3 = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: binned.labels,
+                    datasets: [
+                        { label: '1-NN (Erwartungstreu)', data: binned.binsA, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.15)', fill: true, tension: 0.3 },
+                        { label: 'k-NN (k = ' + kMax + ', Verzerrt)', data: binned.binsB, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)', fill: true, tension: 0.3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { display: false } },
+                    plugins: {
+                        verticalLine: { value: trueTargetMu },
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        }
+
+        function renderFormulas() {
+            katex.render("\\text{Bias}(\\hat{\\theta}) = \\mathbb{E}[\\hat{\\theta}] - \\theta", document.getElementById('formula-bias'));
+            katex.render("\\text{Var}(\\hat{\\theta}) = \\mathbb{E}[(\\hat{\\theta} - \\mathbb{E}[\\hat{\\theta}])^2]", document.getElementById('formula-variance'));
+            katex.render("\\text{MSE}(\\hat{\\theta}) = \\mathbb{E}[(\\hat{\\theta} - \\theta)^2]", document.getElementById('formula-mse'));
+            
+            katex.render("\\hat{\\sigma}^2_{\\text{biased}} = \\frac{1}{n}\\sum_{i=1}^n (x_i - \\bar{x})^2", document.getElementById('formula-ex1-biased'));
+            katex.render("\\hat{\\sigma}^2_{\\text{unbiased}} = \\frac{1}{n-1}\\sum_{i=1}^n (x_i - \\bar{x})^2", document.getElementById('formula-ex1-unbiased'));
+            
+            katex.render("\\hat{I}_{\\text{MC}} = \\frac{1}{n}\\sum_{i=1}^n L_i", document.getElementById('formula-ex2-unbiased'));
+            katex.render("\\hat{I}_{\\text{clamp}} = \\frac{1}{n}\\sum_{i=1}^n \\min(L_i, C)", document.getElementById('formula-ex2-biased'));
+
+            katex.render("\\text{MSE}(\\hat{\\theta}) = \\mathbb{E}\\left[ \\big(\\hat{\\theta} - \\theta\\big)^2 \\right]", document.getElementById('derive-step1'));
+            document.getElementById('derive-step1').innerHTML += "<br><br>";
+            katex.render("\\text{MSE}(\\hat{\\theta}) = \\mathbb{E}\\left[ \\Big( \\big(\\hat{\\theta} - \\mathbb{E}[\\hat{\\theta}]\\big) + \\big(\\mathbb{E}[\\hat{\\theta}] - \\theta\\big) \\Big)^2 \\right]", document.getElementById('derive-step1'));
+            
+            katex.render("\\text{MSE}(\\hat{\\theta}) = \\mathbb{E}\\left[ \\big(\\hat{\\theta} - \\mathbb{E}[\\hat{\\theta}]\\big)^2 + 2\\big(\\hat{\\theta} - \\mathbb{E}[\\hat{\\theta}]\\big)\\big(\\mathbb{E}[\\hat{\\theta}] - \\theta\\big) + \\big(\\mathbb{E}[\\hat{\\theta}] - \\theta\\big)^2 \\right]", document.getElementById('derive-step2'));
+            
+            katex.render("\\text{MSE}(\\hat{\\theta}) = \\mathbb{E}\\left[\\big(\\hat{\\theta} - \\mathbb{E}[\\hat{\\theta}]\\big)^2\\right] + \\mathbb{E}\\left[2\\big(\\hat{\\theta} - \\mathbb{E}[\\hat{\\theta}]\\big)\\big(\\mathbb{E}[\\hat{\\theta}] - \\theta\\big)\\right] + \\mathbb{E}\\left[\\big(\\mathbb{E}[\\hat{\\theta}] - \\theta\\big)^2\\right]", document.getElementById('derive-step3'));
+            
+            katex.render("\\mathbb{E}\\left[\\big(\\hat{\\theta} - \\mathbb{E}[\\hat{\\theta}]\\big)^2\\right] = \\text{Var}(\\hat{\\theta})", document.getElementById('derive-term1'));
+            katex.render("\\mathbb{E}\\left[\\big(\\mathbb{E}[\\hat{\\theta}] - \\theta\\big)^2\\right] = \\big(\\mathbb{E}[\\hat{\\theta}] - \\theta\\big)^2 = \\text{Bias}(\\hat{\\theta})^2", document.getElementById('derive-term2'));
+            
+            katex.render("\\mathbb{E}\\left[2\\big(\\hat{\\theta} - \\mathbb{E}[\\hat{\\theta}]\\big)\\big(\\mathbb{E}[\\hat{\\theta}] - \\theta\\big)\\right] = 2\\big(\\mathbb{E}[\\hat{\\theta}] - \\theta\\big) \\cdot \\mathbb{E}\\left[\\hat{\\theta} - \\mathbb{E}[\\hat{\\theta}]\\right]", document.getElementById('derive-term3-part1'));
+            katex.render("2\\big(\\mathbb{E}[\\hat{\\theta}] - \\theta\\big) \\cdot 0 = 0", document.getElementById('derive-term3-part2'));
+            
+            katex.render("\\boxed{\\text{MSE}(\\hat{\\theta}) = \\text{Var}(\\hat{\\theta}) + \\text{Bias}(\\hat{\\theta})^2}", document.getElementById('derive-final'));
+
+            const inlines = document.querySelectorAll('.math-inline');
+            inlines.forEach(el => {
+                const tex = el.textContent;
+                katex.render(tex, el, { displayMode: false });
+            });
+        }
+
+        window.onload = function() {
+            renderFormulas();
+            runExample1();
+            runExample2();
+            runExample3();
+        };
+    </script>
+</body>
+</html>
+
