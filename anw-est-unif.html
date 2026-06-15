@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erwartungstreue Schätzfunktionen im Modell X_i ~ U(0, ϑ) - Optimiert</title>
+    
+    <!-- KaTeX für mathematische Formeln -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    
+    <!-- Chart.js für interaktive Diagramme -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f1f5f9;
+            color: #334155;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid #e2e8f0;
+        }
+        h2 {
+            color: #0f172a;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+        h3 {
+            color: #1e293b;
+            font-size: 1.2rem;
+            margin-top: 25px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 5px;
+        }
+        p, li {
+            font-size: 1.05rem;
+            color: #475569;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 25px;
+        }
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 340px;
+            width: 100%;
+        }
+        .math-block {
+            background-color: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 3px solid #64748b;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #334155;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            background-color: #f8fafc;
+        }
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.95rem;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .badge-biased { background-color: #fee2e2; color: #991b1b; }
+        .badge-unbiased { background-color: #d1fae5; color: #065f46; }
+        .badge-mean { background-color: #dbeafe; color: #1e40af; }
+        
+        .highlight-box {
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Erwartungstreue Schätzfunktionen im Modell $X_i \sim U(0,\vartheta)$</h1>
+        <p>mit Anwendung auf Circuit-Breaks in verteilten Software-Systemen</p>
+    </div>
+
+    <div class="container">
+        
+        <!-- Sektion 1: Informatik-Anwendung -->
+        <div class="card">
+            <h2>1. Anwendungskontext in der Informatik</h2>
+            <p>
+                In modernen, verteilten Cloud-Architekturen (wie Kubernetes-Clustern) ist die präzise Steuerung von System-Timeouts und Lastgrenzen wichtig. Nehmen wir an, ein Service-Task verarbeitet eingehende Anfragen, deren Verarbeitungszeit stark schwankt. Durch eine gleichmäßigen Datenaufteilung sei bekannt, dass die Antwortzeiten $X_1, X_2, \dots, X_n$ unabhängig und identisch verteilt (i.i.d.) gemessen werden nach einer stetigen Gleichverteilung:
+            </p>
+            <div class="math-block">
+                $$X_i \sim U(0, \vartheta)$$
+            </div>
+            <p>
+                Hierbei repräsentiert der Parameter $\vartheta$ (Theta) die <strong>maximale, theoretische Verarbeitungszeit</strong> des Endpunkts. Das DevOps-Monitoring-System erfasst nun eine Stichprobe von $n$ aufeinanderfolgenden Anfragen. Das Ziel ist es, aus dieser Stichprobe den wahren Wert von $\vartheta$ zu schätzen, um eine Sicherung (Circuit Breaker) optimal zu konfigurieren. Durch die Sicherung wird (zeitweise) eine überlastete Ressource (etwa eine Datenbank) abgeschaltet. Der User bekommt gleich eine negative Antwort und muss nicht bis zum Timeout warten. Hierdurch wird auch vermieden, dass der Thread-Pool für wartende Anfragen überläuft und der Service ebenfalls ausfällt. 
+            </p>
+        </div>
+
+        <!-- Sektion 2: Mathematische Herleitung -->
+        <div class="card">
+            <h2>2. Mathematische Herleitung des Schätzers</h2>
+            <p>
+                Die vollständige Dichtefunktion $f(x)$ und die vollständige Verteilungsfunktion $F(x)$ einer einzelnen Zufallsvariablen $X_i \sim U(0, \vartheta)$ lauten per Fallunterscheidung:
+            </p>
+            <div class="math-block">
+                $$f(x) = \begin{cases} \frac{1}{\vartheta} & \text{für } 0 \le x \le \vartheta \\ 0 & \text{sonst} \end{cases} \quad \text{und} \quad F(x) = \begin{cases} 0 & \text{für } x < 0 \\ \frac{x}{\vartheta} & \text{für } 0 \le x \le \vartheta \\ 1 & \text{für } x > \vartheta \end{cases}$$
+            </div>
+
+            <h3>Der Maximum-Likelihood-Schätzer ($M$)</h3>
+            <p>
+                Da alle beobachteten Werte $X_i \le \vartheta$ sein müssen, ist der intuitive Maximum-Likelihood-Schätzer (MLE) das Maximum der Stichprobe:
+                $$M = \max(X_1, X_2, \dots, X_n) = X_{(n)}$$
+                Um zu prüfen, ob $M$ erwartungstreu ist, bestimmen wir seinen Erwartungswert $E[M]$. Dazu leiten wir die vollständige Verteilungsfunktion $F_M(x) = P(M \le x)$ her. Unter Verwendung formal korrekter Ereignismengen ergibt sich für den Bereich $0 \le x \le \vartheta$:
+            </p>
+            <div class="math-block">
+                $$F_M(x) = P(M \le x) = P(\{X_1 \le x\} \cap \dots \cap \{X_n \le x\}) = \prod_{i=1}^n P(\{X_i \le x\}) = [F(x)]^n = \left(\frac{x}{\vartheta}\right)^n$$
+            </div>
+            <p>
+                Die vollständige Verteilungsfunktion $F_M(x)$ für das Maximum lautet somit per Fallunterscheidung:
+            </p>
+            <div class="math-block">
+                $$F_M(x) = \begin{cases} 0 & \text{für } x < 0 \\ \left(\frac{x}{\vartheta}\right)^n & \text{für } 0 \le x \le \vartheta \\ 1 & \text{für } x > \vartheta \end{cases}$$
+            </div>
+            <p>
+                Durch Ableiten der Verteilungsfunktion nach $x$ erhalten wir die vollständige Wahrscheinlichkeitsdichte $f_M(x)$:
+            </p>
+            <div class="math-block">
+                $$f_M(x) = \begin{cases} \frac{n \cdot x^{n-1}}{\vartheta^n} & \text{für } 0 \le x \le \vartheta \\ 0 & \text{sonst} \end{cases}$$
+            </div>
+            <p>
+                Nun berechnen wir den Erwartungswert $E[M]$ über den einzig relevanten Bereich $[0, \vartheta]$:
+            </p>
+            <div class="math-block">
+                $$E[M] = \int_{-\infty}^{\infty} x \cdot f_M(x) \, dx = \int_0^\vartheta x \cdot \frac{n \cdot x^{n-1}}{\vartheta^n} \, dx = \frac{n}{\vartheta^n} \int_0^\vartheta x^n \, dx = \frac{n}{\vartheta^n} \left[ \frac{x^{n+1}}{n+1} \right]_0^\vartheta = \frac{n}{n+1} \vartheta$$
+            </div>
+            <div class="highlight-box">
+                <strong>Erkenntnis:</strong> Da $E[M] = \frac{n}{n+1} \vartheta \neq \vartheta$, ist der Schätzer $M$ <strong>nicht erwartungstreu (verzerrt)</strong>. Er unterschätzt $\vartheta$ im Mittel systematisch. Da die Dichte für alle $x > \vartheta$ exakt $0$ ist, kann das Maximum den wahren Wert niemals überschreiten.
+            </div>
+
+            <h3>Konstruktion des erwartungstreuen Schätzers ($\hat{\vartheta}$)</h3>
+            <p>
+                Durch Skalierung mit dem Kehrwert des Verzerrungsfaktors eliminieren wir den Bias und erhalten die erwartungstreue Schätzfunktion $\hat{\vartheta}$:
+            </p>
+            <div class="math-block">
+                $$\hat{\vartheta} = \frac{n+1}{n} M = \frac{n+1}{n} \max(X_1, X_2, \dots, X_n)$$
+            </div>
+            <p>
+                <strong>Beweis der Erwartungstreue:</strong>
+                $$E[\hat{\vartheta}] = E\left[\frac{n+1}{n} M\right] = \frac{n+1}{n} E[M] = \frac{n+1}{n} \cdot \frac{n}{n+1} \vartheta = \vartheta$$
+            </p>
+        </div>
+
+        <!-- Sektion 3: Interaktives Programm / Simulation -->
+        <div class="card">
+            <h2>3. Interaktives Simulationsprogramm</h2>
+            <p>
+                Ändern Sie die Parameter der Cloud-Infrastruktur. Das untenstehende Histogramm zeigt echte, diskrete Häufigkeitsklassen (Bins). Achten Sie besonders darauf, wie die Dichte des Maximums $M$ für alle Werte $x > \vartheta$ schlagartig auf $0$ abfällt, während der korrigierte Schätzer $\hat{\vartheta}$ den wahren Wert überschreiten kann, um im Mittel exakt erwartungstreu zu sein.
+            </p>
+            
+            <div class="grid">
+                <!-- Inputs -->
+                <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                    <div class="form-group">
+                        <label for="theta">Wahrer Wert $\vartheta$ (Max. Latenz in ms):</label>
+                        <input type="number" id="theta" value="120" min="1" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="sampleSize">Stichprobenumfang ($n$ Anfragen):</label>
+                        <input type="number" id="sampleSize" value="8" min="1" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="simRuns">Simulationsdurchläufe ($S$):</label>
+                        <input type="number" id="simRuns" value="5000" min="100" step="100">
+                    </div>
+                    <button onclick="runSimulation()">Simulation starten</button>
+                </div>
+
+                <!-- Ergebnisse Tabelle -->
+                <div>
+                    <h4 style="margin-top: 0; color: #1e293b;">Statistische Auswertung</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Metrik / Schätzfunktion</th>
+                                <th><span class="badge badge-biased">Maximum M</span> (Verzerrt)</th>
+                                <th><span class="badge badge-unbiased">Schätzer θ̂</span> (Erwartungstreu)</th>
+                                <th><span class="badge badge-mean">Mittelwert θ̃</span> (Erwartungstreu)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Empirischer Mittelwert (E)</strong></td>
+                                <td id="meanM">-</td>
+                                <td id="meanHat">-</td>
+                                <td id="meanTilde">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Theoretischer Mittelwert</strong></td>
+                                <td id="theoMeanM">-</td>
+                                <td id="theoMeanHat">-</td>
+                                <td id="theoMeanTilde">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Empirischer Bias (Verzerrung)</strong></td>
+                                <td id="biasM">-</td>
+                                <td id="biasHat">-</td>
+                                <td id="biasTilde">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Empirische Varianz (Var)</strong></td>
+                                <td id="varM">-</td>
+                                <td id="varHat">-</td>
+                                <td id="varTilde">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mean Squared Error (MSE)</strong></td>
+                                <td id="mseM">-</td>
+                                <td id="mseHat">-</td>
+                                <td id="mseTilde">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Plots -->
+            <h3 style="margin-top: 30px;">4. Grafische Illustrationen</h3>
+            <div class="grid" style="grid-template-columns: 1fr 1fr; margin-top: 20px;">
+                <div style="background: #fff; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <div class="chart-container">
+                        <canvas id="distChart"></canvas>
+                    </div>
+                    <p style="font-size: 0.85rem; text-align: center; margin-top: 5px; color: #64748b;">
+                        <strong>Histogramm (Stufen/Klassen):</strong> Beachten Sie, dass die rote Kurve für $M$ für alle Werte $x > \vartheta$ exakt bei $0$ liegt, da das Stichprobenmaximum die obere Grenze niemals überschreiten kann.
+                    </p>
+                </div>
+                <div style="background: #fff; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <div class="chart-container">
+                        <canvas id="convChart"></canvas>
+                    </div>
+                    <p style="font-size: 0.85rem; text-align: center; margin-top: 5px; color: #64748b;">
+                        Visualisierung der Konsistenz: Ein einzelner realer Stichprobenpfad zeigt, wie sich die Schätzungen bei sukzessive eintreffenden Messdaten ($k = 1 \dots 150$) dem wahren Wert annähern.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError : false
+            });
+            runSimulation();
+        });
+
+        let distChart = null;
+        let convChart = null;
+
+        // Erzeugung eines präzisen Histogramms mit festem Definitionsbereich über theta hinaus
+        function generateHistogramData(dataM, dataHat, dataTilde, theta, binCount = 40) {
+            // Festgelegte Achsenskalierung von 0.5 * theta bis 1.5 * theta, um das Verhalten nach theta exakt abzubilden
+            const min = theta * 0.5;
+            const max = theta * 1.5;
+            const binWidth = (max - min) / binCount;
+            
+            const labels = [];
+            const binsM = new Array(binCount).fill(0);
+            const binsHat = new Array(binCount).fill(0);
+            const binsTilde = new Array(binCount).fill(0);
+            
+            for(let i = 0; i < binCount; i++) {
+                labels.push((min + i * binWidth).toFixed(1));
+            }
+            
+            // Zuordnung zu den Histogramm-Klassen
+            for(let i = 0; i < dataM.length; i++) {
+                let idxM = Math.floor((dataM[i] - min) / binWidth);
+                if(idxM >= 0 && idxM < binCount) binsM[idxM]++;
+                
+                let idxHat = Math.floor((dataHat[i] - min) / binWidth);
+                if(idxHat >= 0 && idxHat < binCount) binsHat[idxHat]++;
+                
+                let idxTilde = Math.floor((dataTilde[i] - min) / binWidth);
+                if(idxTilde >= 0 && idxTilde < binCount) binsTilde[idxTilde]++;
+            }
+            
+            const norm = dataM.length;
+            return {
+                labels: labels,
+                countsM: binsM.map(c => c / norm),
+                countsHat: binsHat.map(c => c / norm),
+                countsTilde: binsTilde.map(c => c / norm)
+            };
+        }
+
+        function runSimulation() {
+            const theta = parseFloat(document.getElementById('theta').value);
+            const n = parseInt(document.getElementById('sampleSize').value);
+            const simulations = parseInt(document.getElementById('simRuns').value);
+            
+            if(isNaN(theta) || isNaN(n) || isNaN(simulations) || theta <= 0 || n <= 0 || simulations <= 0) {
+                alert("Bitte geben Sie valide positive numerische Parameter ein.");
+                return;
+            }
+            
+            let sumM = 0, sumHat = 0, sumTilde = 0;
+            let dataM = [], dataHat = [], dataTilde = [];
+            
+            for(let s = 0; s < simulations; s++) {
+                let maxVal = 0;
+                let sumVal = 0;
+                for(let i = 0; i < n; i++) {
+                    let sample = Math.random() * theta;
+                    sumVal += sample;
+                    if(sample > maxVal) maxVal = sample;
+                }
+                
+                let estM = maxVal;
+                let estHat = ((n + 1) / n) * maxVal;
+                let estTilde = 2 * (sumVal / n);
+                
+                dataM.push(estM);
+                dataHat.push(estHat);
+                dataTilde.push(estTilde);
+                
+                sumM += estM;
+                sumHat += estHat;
+                sumTilde += estTilde;
+            }
+            
+            const meanM = sumM / simulations;
+            const meanHat = sumHat / simulations;
+            const meanTilde = sumTilde / simulations;
+            
+            let varM = 0, varHat = 0, varTilde = 0;
+            let mseM = 0, mseHat = 0, mseTilde = 0;
+            for(let s = 0; s < simulations; s++) {
+                varM += Math.pow(dataM[s] - meanM, 2);
+                varHat += Math.pow(dataHat[s] - meanHat, 2);
+                varTilde += Math.pow(dataTilde[s] - meanTilde, 2);
+                
+                mseM += Math.pow(dataM[s] - theta, 2);
+                mseHat += Math.pow(dataHat[s] - theta, 2);
+                mseTilde += Math.pow(dataTilde[s] - theta, 2);
+            }
+            varM /= simulations; varHat /= simulations; varTilde /= simulations;
+            mseM /= simulations; mseHat /= simulations; mseTilde /= simulations;
+            
+            const theoMeanM = (n / (n + 1)) * theta;
+            
+            document.getElementById('meanM').innerText = meanM.toFixed(3);
+            document.getElementById('meanHat').innerText = meanHat.toFixed(3);
+            document.getElementById('meanTilde').innerText = meanTilde.toFixed(3);
+            
+            document.getElementById('theoMeanM').innerText = theoMeanM.toFixed(3);
+            document.getElementById('theoMeanHat').innerText = theta.toFixed(3);
+            document.getElementById('theoMeanTilde').innerText = theta.toFixed(3);
+            
+            document.getElementById('biasM').innerText = (meanM - theta).toFixed(3);
+            document.getElementById('biasHat').innerText = (meanHat - theta).toFixed(3);
+            document.getElementById('biasTilde').innerText = (meanTilde - theta).toFixed(3);
+            
+            document.getElementById('varM').innerText = varM.toFixed(3);
+            document.getElementById('varHat').innerText = varHat.toFixed(3);
+            document.getElementById('varTilde').innerText = varTilde.toFixed(3);
+            
+            document.getElementById('mseM').innerText = mseM.toFixed(3);
+            document.getElementById('mseHat').innerText = mseHat.toFixed(3);
+            document.getElementById('mseTilde').innerText = mseTilde.toFixed(3);
+            
+            // Diagramm 1: Echtes Histogramm (Einstellung stepped: 'middle' für exakte Rechteckstufen)
+            const hist = generateHistogramData(dataM, dataHat, dataTilde, theta, 40);
+            if(distChart) distChart.destroy();
+            
+            const ctxDist = document.getElementById('distChart').getContext('2d');
+            distChart = new Chart(ctxDist, {
+                type: 'line',
+                data: {
+                    labels: hist.labels,
+                    datasets: [
+                        { label: 'Max M (Verzerrt)', data: hist.countsM, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, stepped: 'middle', pointRadius: 0, borderWidth: 2 },
+                        { label: 'θ̂ (Erwartungstreu)', data: hist.countsHat, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.05)', fill: true, stepped: 'middle', pointRadius: 0, borderWidth: 2 },
+                        { label: 'θ̃ (Mittelwert)', data: hist.countsTilde, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.05)', fill: true, stepped: 'middle', pointRadius: 0, borderWidth: 2 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        title: { display: true, text: 'Wahrscheinlichkeitsdichte (Histogramm-Stufen)' },
+                        annotation: { /* Falls Erweiterungen genutzt werden */ }
+                    },
+                    scales: {
+                        x: { 
+                            title: { display: true, text: 'Wert des Schätzers (x)' },
+                            grid: { display: true }
+                        },
+                        y: { 
+                            title: { display: true, text: 'Relative Klassenhäufigkeit' },
+                            ticks: { display: true } 
+                        }
+                    }
+                }
+            });
+
+            // Diagramm 2: Konvergenzpfad
+            let convLabels = [];
+            let pathM = [], pathHat = [], pathTilde = [];
+            let runningMax = 0, runningSum = 0;
+            const maxK = 150;
+            
+            for(let k = 1; k <= maxK; k++) {
+                let sample = Math.random() * theta;
+                runningSum += sample;
+                if(sample > runningMax) runningMax = sample;
+                
+                convLabels.push(k);
+                pathM.push(runningMax);
+                pathHat.push(((k + 1) / k) * runningMax);
+                pathTilde.push(2 * (runningSum / k));
+            }
+            
+            if(convChart) convChart.destroy();
+            const ctxConv = document.getElementById('convChart').getContext('2d');
+            convChart = new Chart(ctxConv, {
+                type: 'line',
+                data: {
+                    labels: convLabels,
+                    datasets: [
+                        { label: 'Wahrer Wert θ', data: new Array(maxK).fill(theta), borderColor: '#475569', borderWidth: 2, borderDash: [6, 4], fill: false, pointRadius: 0 },
+                        { label: 'M_k (Maximum)', data: pathM, borderColor: '#ef4444', borderWidth: 1.5, fill: false, pointRadius: 0 },
+                        { label: 'θ̂_k (Erwartungstreu)', data: pathHat, borderColor: '#10b981', borderWidth: 2, fill: false, pointRadius: 0 },
+                        { label: 'θ̃_k (Mittelwert)', data: pathTilde, borderColor: '#3b82f6', borderWidth: 1.5, fill: false, pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { title: { display: true, text: 'Konvergenzpfad bei fortlaufenden Anfragen (k)' } },
+                    scales: {
+                        x: { title: { display: true, text: 'Anzahl gemessener Anfragen (k)' } },
+                        y: { title: { display: true, text: 'Geschätztes θ' } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
