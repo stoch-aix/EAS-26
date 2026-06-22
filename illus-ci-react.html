@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reaktionszeit-Analyse & KI-Fluktuation</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased pb-12">
+
+    <nav class="border-b border-slate-800 bg-slate-900/50 backdrop-blur p-4 mb-8">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <span class="text-xl font-black tracking-wider text-indigo-400">Konfidenzintervalle: Simulator und Reaktionszeit-Test - Wie schnell reagierst Du?</span>
+            <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded font-mono">Dual-Engine HTML App</span>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 md:px-6 space-y-8">
+        
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+            <h2 class="text-lg font-bold mb-4 text-slate-300 flex items-center gap-2">ÔÅ▒´©Å 1. Realer Reaktionstest (Kumulatives KI im Zeitablauf)</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div class="space-y-4">
+                    <div id="game-zone" class="bg-slate-950 border-2 border-dashed border-slate-800 rounded-xl p-6 text-center cursor-pointer select-none h-36 flex flex-col justify-center items-center transition-all duration-200 hover:border-slate-700">
+                        <span id="game-text" class="text-xs font-medium text-slate-400">Klicke hier f├╝r den Reaktionstest</span>
+                        <span id="game-subtext" class="text-[10px] text-slate-500 mt-1">Wartezeit: 0.5 - 1.5s</span>
+                    </div>
+
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-1 text-xs font-mono">
+                        <div>Beobachtungen (n): <span id="stat-n" class="text-indigo-400 font-bold">0</span></div>
+                        <div>Letzter Wert: <span id="stat-last" class="text-emerald-400 font-bold">--</span></div>
+                        <div>Aktueller Schnitt: <span id="stat-mean" class="text-cyan-400 font-bold">--</span></div>
+                    </div>
+
+                    <button onclick="clearReactionHistory()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-semibold p-2 rounded-lg transition">
+                        ­ƒùæ´©Å Test-Historie l├Âschen
+                    </button>
+                </div>
+
+                <div class="lg:col-span-3 bg-slate-950 border border-slate-800 rounded-xl p-2">
+                    <div id="plotly-reaction-chart" class="w-full h-[300px]"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+            <h2 class="text-lg font-bold mb-4 text-slate-300">­ƒÄ▓ 2. Unabh├ñngige Simulation (\(L\) Stichproben vom Umfang \(n\))</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col justify-between space-y-3 h-[360px]">
+                    <div class="space-y-2 text-xs font-mono text-slate-400">
+                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider block text-center mb-2">Simulations-Parameter</span>
+                        
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                            <label for="sim-L">Stichproben (L):</label>
+                            <input type="number" id="sim-L" value="20" min="1" max="100" class="w-16 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right text-purple-400 font-bold focus:outline-none focus:border-purple-500">
+                        </div>
+                        
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                            <label for="sim-n">Umfang (n):</label>
+                            <input type="number" id="sim-n" value="15" min="2" max="500" class="w-16 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right text-purple-400 font-bold focus:outline-none focus:border-purple-500">
+                        </div>
+                        
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                            <label for="sim-mu">Wahrer Wert (&mu;):</label>
+                            <input type="number" id="sim-mu" value="250" min="50" max="550" class="w-16 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right text-red-400 font-bold focus:outline-none focus:border-red-500">
+                        </div>
+
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                            <label for="sim-conf">Konfidenz (1-&alpha;):</label>
+                            <input type="number" id="sim-conf" value="0.95" min="0.50" max="0.999" step="0.01" class="w-16 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-right text-cyan-400 font-bold focus:outline-none focus:border-cyan-500">
+                        </div>
+
+                        <div class="flex justify-between items-center pt-1">
+                            <span>├£berdeckung:</span>
+                            <span id="sim-coverage" class="text-emerald-400 font-bold text-sm">--</span>
+                        </div>
+                    </div>
+                    <button onclick="runLStichprobenSimulation()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold p-2.5 rounded-lg shadow-lg shadow-indigo-600/20 transition-all transform active:scale-98">
+                        ­ƒöä L Stichproben simultan erzeugen
+                    </button>
+                </div>
+
+                <div class="lg:col-span-3 bg-slate-950 border border-slate-800 rounded-xl p-2">
+                    <div id="plotly-sim-chart" class="w-full h-[360px]"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-xl prose prose-invert max-w-none">
+            <h2 class="text-xl font-bold border-b border-slate-800 pb-3 text-indigo-400">­ƒôÉ Mathematische Herleitung: Konfidenzintervall bei unbekannter Varianz</h2>
+            <p class="text-sm text-slate-300 mt-4 leading-relaxed">
+                Da die wahre Varianz \(\sigma^2\) der Grundgesamtheit der menschlichen Reaktionszeiten unbekannt ist, muss sie aus den empirischen Daten gesch├ñtzt werden. Dies erfordert die Verwendung der <strong>Student-t-Verteilung</strong> anstelle der Standardnormalverteilung.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-mono mt-6 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-300 mb-2">1. Punktsch├ñtzer</h3>
+                    <p>Mittelwert der Stichprobe:</p>
+                    $$\bar{X} = \frac{1}{n} \sum_{i=1}^{n} X_i$$
+                    <p class="mt-4">Korrigierte Stichprobenstandardabweichung (Sch├ñtzer f├╝r \(\sigma\)):</p>
+                    $$S = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (X_i - \bar{X})^2}$$
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-300 mb-2">2. Pivot-Statistik & t-Verteilung</h3>
+                    <p>Die standardisierte Zufallsvariable \(T\) folgt einer t-Verteilung mit \(df = n-1\) Freiheitsgraden:</p>
+                    $$T = \frac{\bar{X} - \mu}{\frac{S}{\sqrt{n}}} \sim t_{n-1}$$
+                    <p class="mt-4">Ein \(1 - \alpha\)-Prognoseintervall f├╝r \( T \) ist gegeben durch:</p>
+                    $$P \left( -t_{n-1, 1-\alpha/2} \le \frac{\bar{X} - \mu}{\frac{S}{\sqrt{n}}} \le t_{n-1, 1-\alpha/2} \right) = 1 - \alpha$$
+                </div>
+            </div>
+
+            <div class="text-xs font-mono mt-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <h3 class="text-sm font-bold text-slate-300 mb-2">3. Aufl├Âsung nach dem wahren Parameter \(\mu\)</h3>
+                <p>Durch algebraische Isolation von \(\mu\) erhalten wir die finale Formel des Intervalls:</p>
+                $$\bar{X} - t_{n-1, 1-\alpha/2} \cdot \frac{S}{\sqrt{n}} \le \mu \le \bar{X} + t_{n-1, 1-\alpha/2} \cdot \frac{S}{\sqrt{n}}$$
+                <p class="mt-4 text-indigo-400 font-bold">Das Konfidenzintervall (KI) lautet folglich:</p>
+                $$KI = \left[ \bar{X} - t_{n-1, 1-\alpha/2} \cdot \frac{S}{\sqrt{n}} \ , \ \bar{X} + t_{n-1, 1-\alpha/2} \cdot \frac{S}{\sqrt{n}} \right]$$
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 1. SEPARATER REAKTIONSTEST-DATENSATZ
+        let reactionHistory = [];
+        let gameState = 'idle';
+        let timeoutId = null;
+        let startTime = 0;
+
+        // Mathematisch exakte t-Verteilungs Quantil-Approximation (Cornish-Fisher-Expansion)
+        function getTCrit(df, alpha = 0.05) {
+            let p = 1 - alpha / 2;
+            if (df <= 0) return 0;
+            if (df === 1) return Math.tan(Math.PI * (p - 0.5));
+            if (df === 2) return (2 * p - 1) / Math.sqrt(2 * p * (1 - p));
+            
+            // Approximation des inversen Normalverteilungswerts (Acklam-Verfahren)
+            let t_val = Math.sqrt(-2.0 * Math.log(1.0 - p));
+            let z = t_val - ((2.515517 + 0.802853 * t_val + 0.010328 * t_val * t_val) / 
+                    (1.0 + 1.432788 * t_val + 0.189269 * t_val * t_val + 0.001308 * t_val * t_val * t_val));
+            
+            let z3 = z * z * z;
+            let z5 = z3 * z * z;
+            
+            let k1 = (z3 + z) / (4 * df);
+            let k2 = (5 * z5 + 16 * z3 + 3 * z) / (96 * df * df);
+            
+            return z + k1 + k2;
+        }
+
+        function randNormal(mean, stdDev) {
+            const u1 = Math.random();
+            const u2 = Math.random();
+            const randStdNormal = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+            return mean + randStdNormal * stdDev;
+        }
+
+        // --- REAKTIONSTEST ENGINE ---
+        const gameZone = document.getElementById('game-zone');
+        const gameText = document.getElementById('game-text');
+
+        gameZone.addEventListener('mousedown', () => {
+            if (gameState === 'idle') {
+                gameState = 'waiting';
+                gameZone.className = "bg-amber-950/40 border-2 border-amber-500/50 rounded-xl p-6 text-center cursor-pointer select-none h-36 flex flex-col justify-center items-center animate-pulse";
+                gameText.innerText = "Bereithalten...";
+                gameText.className = "text-xs font-bold text-amber-400";
+                
+                const randomDelay = Math.random() * 1000 + 500; // 0.5s bis 1.5s
+                timeoutId = setTimeout(() => {
+                    gameState = 'green';
+                    gameZone.className = "bg-emerald-950/40 border-2 border-emerald-500 rounded-xl p-6 text-center cursor-pointer select-none h-36 flex flex-col justify-center items-center";
+                    gameText.innerText = "JETZT KLICKEN!!!";
+                    gameText.className = "text-sm font-black text-emerald-400 tracking-wide";
+                    startTime = performance.now();
+                }, randomDelay);
+
+            } else if (gameState === 'waiting') {
+                clearTimeout(timeoutId);
+                gameState = 'idle';
+                gameZone.className = "bg-red-950/40 border-2 border-red-500 rounded-xl p-6 text-center cursor-pointer select-none h-36 flex flex-col justify-center items-center";
+                gameText.innerText = "Zu fr├╝h! Erneut versuchen.";
+                gameText.className = "text-xs font-bold text-red-400";
+
+            } else if (gameState === 'green') {
+                const endTime = performance.now();
+                reactionHistory.push(endTime - startTime);
+                gameState = 'idle';
+                gameZone.className = "bg-slate-950 border-2 border-dashed border-slate-800 rounded-xl p-6 text-center cursor-pointer select-none h-36 flex flex-col justify-center items-center";
+                gameText.innerText = "Erfolgreich! Erneut klicken.";
+                gameText.className = "text-xs font-medium text-slate-400";
+                updateReactionPlot();
+            }
+        });
+
+        function clearReactionHistory() {
+            reactionHistory = [];
+            updateReactionPlot();
+        }
+
+        function updateReactionPlot() {
+            const n = reactionHistory.length;
+            if (n === 0) {
+                document.getElementById('stat-n').innerText = "0";
+                document.getElementById('stat-last').innerText = "--";
+                document.getElementById('stat-mean').innerText = "--";
+                Plotly.purge('plotly-reaction-chart');
+                return;
+            }
+
+            const lastVal = reactionHistory[n - 1];
+            const sum = reactionHistory.reduce((a, b) => a + b, 0);
+            const currentMean = sum / n;
+
+            document.getElementById('stat-n').innerText = n;
+            document.getElementById('stat-last').innerText = lastVal.toFixed(1) + " ms";
+            document.getElementById('stat-mean').innerText = currentMean.toFixed(1) + " ms";
+
+            if (n < 2) {
+                Plotly.newPlot('plotly-reaction-chart', [], getLayout("Reaktionszeit (ms)", "Akkumulierte Versuche"));
+                return;
+            }
+
+            let xMeans = [], yIndices = [], errorX = [];
+            for (let i = 2; i <= n; i++) {
+                const subArray = reactionHistory.slice(0, i);
+                const subN = subArray.length;
+                const subMean = subArray.reduce((a, b) => a + b, 0) / subN;
+                const variance = subArray.reduce((a, b) => a + Math.pow(b - subMean, 2), 0) / (subN - 1);
+                const stdErr = Math.sqrt(variance) / Math.sqrt(subN);
+                
+                xMeans.push(subMean);
+                yIndices.push(i - 1);
+                errorX.push(getTCrit(subN - 1, 0.05) * stdErr);
+            }
+
+            const trace = {
+                x: xMeans, y: yIndices, mode: 'markers', type: 'scatter', name: 'Zugeordnetes KI',
+                marker: { color: '#22d3ee', size: 6 },
+                error_x: { type: 'data', array: errorX, visible: true, color: 'rgba(34, 211, 238, 0.4)', thickness: 1.5, width: 3 }
+            };
+
+            Plotly.newPlot('plotly-reaction-chart', [trace], getLayout("Reaktionszeit (ms)", "Akkumulierte Versuche"));
+        }
+
+
+        // --- SIMULATION ENGINE (MIT ROT-MARKIERUNG & LIVE-BERECHNUNG DER ├£BERDECKUNG) ---
+        function runLStichprobenSimulation() {
+            const L = parseInt(document.getElementById('sim-L').value) || 20;
+            const n = parseInt(document.getElementById('sim-n').value) || 15;
+            const trueMean = parseFloat(document.getElementById('sim-mu').value) || 250;
+            const confLevel = parseFloat(document.getElementById('sim-conf').value) || 0.95;
+            const alpha = 1 - confLevel; 
+            const trueStd = 45; 
+
+            let coverX = [], coverY = [], coverErr = [];
+            let missX = [], missY = [], missErr = [];
+
+            for (let j = 1; j <= L; j++) {
+                let sample = [];
+                for (let i = 0; i < n; i++) {
+                    sample.push(randNormal(trueMean, trueStd));
+                }
+
+                const subMean = sample.reduce((a, b) => a + b, 0) / n;
+                const variance = sample.reduce((a, b) => a + Math.pow(b - subMean, 2), 0) / (n - 1);
+                const stdErr = Math.sqrt(variance) / Math.sqrt(n);
+                const marginOfError = getTCrit(n - 1, alpha) * stdErr;
+
+                const lowerBound = subMean - marginOfError;
+                const upperBound = subMean + marginOfError;
+
+                // Pr├╝fen, ob der wahre Wert abgedeckt ist
+                if (trueMean < lowerBound || trueMean > upperBound) {
+                    missX.push(subMean);
+                    missY.push(j);
+                    missErr.push(marginOfError);
+                } else {
+                    coverX.push(subMean);
+                    coverY.push(j);
+                    coverErr.push(marginOfError);
+                }
+            }
+
+            // Anteil berechnen und im UI ausgeben
+            const coverageRate = (coverX.length / L) * 100;
+            document.getElementById('sim-coverage').innerText = coverageRate.toFixed(1) + "%";
+
+            // Farbliche Kennzeichnung (Lila vs. Rot)
+            const traceCover = {
+                x: coverX, y: coverY, mode: 'markers', type: 'scatter', name: '├£berdeckt',
+                marker: { color: '#a855f7', size: 7 },
+                error_x: { type: 'data', array: coverErr, visible: true, color: 'rgba(168, 85, 247, 0.5)', thickness: 2, width: 4 }
+            };
+
+            const traceMiss = {
+                x: missX, y: missY, mode: 'markers', type: 'scatter', name: 'Nicht ├╝berdeckt',
+                marker: { color: '#ef4444', size: 7 },
+                error_x: { type: 'data', array: missErr, visible: true, color: 'rgba(239, 68, 68, 0.7)', thickness: 2, width: 4 }
+            };
+
+            const layout = getLayout("Simulierte Zeit (ms)", "Stichproben-Index (L)");
+            
+            layout.shapes = [{
+                type: 'line', x0: trueMean, y0: 0, x1: trueMean, y1: L + 1,
+                line: { color: '#ef4444', width: 2, dash: 'dash' }
+            }];
+
+            Plotly.newPlot('plotly-sim-chart', [traceCover, traceMiss], layout);
+        }
+
+        // Zentrales Layout f├╝r feste, datenunabh├ñngige Achsen (0 bis 600 ms)
+        function getLayout(xTitle, yTitle) {
+            return {
+                margin: { l: 50, r: 30, t: 15, b: 35 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: '#0f172a',
+                showlegend: false,
+                xaxis: {
+                    title: { text: xTitle, font: { color: '#94a3b8', size: 11 } },
+                    tickfont: { color: '#94a3b8', size: 10 },
+                    gridcolor: '#1e293b',
+                    range: [0, 600],
+                    fixedrange: true
+                },
+                yaxis: {
+                    title: { text: yTitle, font: { color: '#94a3b8', size: 11 } },
+                    tickfont: { color: '#94a3b8', size: 10 },
+                    gridcolor: '#1e293b',
+                    autorange: true,
+                    fixedrange: true
+                }
+            };
+        }
+
+        window.onload = () => {
+            Plotly.newPlot('plotly-reaction-chart', [], getLayout("Reaktionszeit (ms)", "Akkumulierte Versuche"));
+            runLStichprobenSimulation(); 
+        };
+    </script>
+</body>
+</html>
+
