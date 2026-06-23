@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Interaktive Illustration: Einstichproben-t-Test, Fallzahl & Gütefunktion</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 15px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1.3fr;
+            gap: 30px;
+        }
+        @media(max-width: 1000px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+        .panel {
+            background: #fafbfc;
+            padding: 22px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+        .panel h2 {
+            font-size: 1.2rem;
+            color: #34495e;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            padding-left: 8px;
+        }
+        .input-group {
+            margin-bottom: 14px;
+        }
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+            background-color: #fff;
+        }
+        .formula-box {
+            background: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-size: 1rem;
+            text-align: center;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #27ae60;
+        }
+        .results-box {
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            border: 1px solid #cbd5e1;
+        }
+        .chart-container {
+            position: relative;
+            height: 500px;
+            width: 100%;
+        }
+        .math-doc {
+            margin-top: 30px;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Einstichproben t-Test: Analyse, Fallzahlplanung & Gütefunktion</h1>
+    
+    <div class="grid">
+        <div>
+            <div class="panel">
+                <h2>1. Datenbasis wählen</h2>
+                <div class="input-group">
+                    <label for="dataSource">Modus / Datensatz:</label>
+                    <select id="dataSource" onchange="toggleDataMode()">
+                        <option value="simulate">Zufällige Live-Simulation basierend auf Parametern unten</option>
+                        <option value="ds1">Datensatz 1: IQ-Werte nach Gedächtnistraining (N=25)</option>
+                        <option value="ds2">Datensatz 2: Abfüllgewicht Kaffeemaschine in g (N=15)</option>
+                        <option value="ds3">Datensatz 3: Reaktionszeit-Abweichung in ms (N=40)</option>
+                    </select>
+                </div>
+                
+                <div id="simulationParameters">
+                    <div class="input-group">
+                        <label for="trueMu">Wahrer Mittelwert ($\mu_{\text{wahr}}$) für Simulation:</label>
+                        <input type="number" id="trueMu" value="103" step="any">
+                    </div>
+                    <div class="input-group">
+                        <label for="trueSigma">Wahre Standardabweichung ($\sigma_{\text{wahr}}$) für Simulation:</label>
+                        <input type="number" id="trueSigma" value="10" min="0.1" step="any">
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>2. Testproblem & Testplanung</h2>
+                <div class="input-group">
+                    <label for="mu0">Referenzwert ($\mu_0$):</label>
+                    <input type="number" id="mu0" value="100" step="any">
+                </div>
+                
+                <div class="input-group">
+                    <label for="testType">Testrichtung:</label>
+                    <select id="testType" onchange="updateHypothesisDisplay()">
+                        <option value="two-sided">Zweiseitig ($\mu \neq \mu_0$)</option>
+                        <option value="greater">Einseitig rechts ($\mu > \mu_0$)</option>
+                        <option value="less">Einseitig links ($\mu < \mu_0$)</option>
+                    </select>
+                </div>
+
+                <div class="formula-box" id="hypothesisFormula">
+                    \[ H_0: \mu = 100 \quad \text{vs.} \quad H_1: \mu \neq 100 \]
+                </div>
+                
+                <div class="input-group">
+                    <label for="n">Aktueller Stichprobenumfang ($n$):</label>
+                    <input type="number" id="n" value="30" min="3">
+                </div>
+                
+                <div class="input-group">
+                    <label for="alpha">Signifikanzniveau ($\alpha$):</label>
+                    <input type="number" id="alpha" value="0.05" step="0.01" min="0.001" max="0.2">
+                </div>
+                
+                <div class="input-group">
+                    <label for="delta">Relevante Mindestabweichung ($\delta = |\mu - \mu_0|$):</label>
+                    <input type="number" id="delta" value="5" step="any">
+                </div>
+
+                <div class="input-group">
+                    <label for="targetPower">Gewünschte Power ($1-\beta$) für Fallzahlplanung:</label>
+                    <select id="targetPower">
+                        <option value="0.80">80% (default)</option>
+                        <option value="0.85">85%</option>
+                        <option value="0.90">90%</option>
+                        <option value="0.95">95%</option>
+                    </select>
+                </div>
+                
+                <button onclick="runAnalysis()">Berechnen & Aktualisieren</button>
+            </div>
+
+            <div class="panel">
+                <h2>3. Testergebnisse & Konfidenzintervalle</h2>
+                <div id="output" class="results-box">Klicken Sie auf Berechnen, um Daten zu analysieren.</div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>Gütefunktionen (Power) im Vergleich</h2>
+            <div class="chart-container">
+                <canvas id="powerChart"></canvas>
+            </div>
+            <div style="margin-top: 15px; font-size: 0.88rem; color: #4a5568; line-height: 1.5; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <strong>Grafik-Legende & Highlights:</strong>
+                <ul>
+                    <li><span style="color:#3498db;font-weight:bold;">Blaue Linie</span>: Aktuelle Powerfunktion mit dem gewählten $n$.</li>
+                    <li><span style="color:#e67e22;font-weight:bold;">Orange Linie</span>: Optimale Powerfunktion mit berechnetem $n_{\text{opt}}$ zur Zielpower.</li>
+                    <li><span style="color:#e74c3c;font-weight:bold;">Rote/Grüne gestrichelte Linien</span>: Vergleichskurven für halbiertes bzw. verdoppeltes $n$.</li>
+                    <li>Das Symbol <b style="color:#2c3e50;">●</b> markiert den Fehler 1. Art ($\alpha$) auf Höhe der Nullhypothese $\mu_0$.</li>
+                    <li>Das Symbol <b style="color:#9b59b6;">■</b> markiert die Power bei der gewählten Mindestabweichung $\mu_0 + \delta$ (bzw. $-\delta$).</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="math-doc">
+        <h2>Verwendete mathematische Formeln</h2>
+        <p>Der Einstichproben-t-test setzt voraus, dass die Daten einer Normalverteilung $X \sim N(\mu, \sigma^2)$ folgen. Die empirischen Schätzer für Erwartungswert und Varianz aus einer Stichprobe vom Umfang $n$ lauten:</p>
+        \[ \bar{X} = \frac{1}{n}\sum_{i=1}^n X_i \quad \text{und} \quad S^2 = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2 \]
+        
+        <p>Die Teststatistik des t-Tests lautet:</p>
+        \[ t = \frac{\bar{X} - \mu_0}{S / \sqrt{n}} \sim t(df = n-1) \]
+
+        <p>Die zweiseitigen <b>Konfidenzintervalle (KI)</b> zum Niveau $(1-\alpha)$ für den wahren Erwartungswert $\mu$ und die Varianz $\sigma^2$ berechnen sich über die Quantile der t-Verteilung ($t_{1-\alpha/2, df}$) bzw. der Chi-Quadrat-Verteilung ($\chi^2_{p, df}$):</p>
+        \[ \text{KI}_{\mu} = \left[ \bar{X} - t_{1-\alpha/2, n-1} \cdot \frac{S}{\sqrt{n}} \, , \,\, \bar{X} + t_{1-\alpha/2, n-1} \cdot \frac{S}{\sqrt{n}} \right] \]
+        \[ \text{KI}_{\sigma^2} = \left[ \frac{(n-1)S^2}{\chi^2_{1-\alpha/2, n-1}} \, , \, \frac{(n-1)S^2}{\chi^2_{\alpha/2, n-1}} \right] \]
+
+        <p>Die <b>Gütefunktion (Power)</b> $G(\mu)$ gibt die Wahrscheinlichkeit an, $H_0$ abzulehnen, wenn der wahre Erwartungswert $\mu$ ist. Sie basiert auf der nicht-zentralen t-Verteilung mit dem Nichtzentralitätsparameter $\lambda = \frac{\mu - \mu_0}{\sigma / \sqrt{n}}$. Zur flüssigen interaktiven Darstellung wird hier die Normalverteilungs-Approximation angewendet:</p>
+        \[ \text{Zweiseitig:} \quad G(\mu) \approx 1 - \Phi\left( t_{1-\alpha/2, df} - \lambda \right) + \Phi\left( -t_{1-\alpha/2, df} - \lambda \right) \]
+        \[ \text{Einseitig rechts:} \quad G(\mu) \approx 1 - \Phi\left( t_{1-\alpha, df} - \lambda \right) \]
+        \[ \text{Einseitig links:} \quad G(\mu) \approx \Phi\left( t_{\alpha, df} - \lambda \right) \]
+
+        <p>Die <b>optimale Fallzahl $n_{\text{opt}}$</b> zur Erreichung einer Ziel-Power von $(1-\beta)$ bei einer Mindestabweichung $\delta$ wird iterativ bzw. über die Standardnäherung (unter Verwendung der empirischen Standardabweichung $s$) bestimmt:</p>
+        \[ \text{Zweiseitig:} \quad n_{\text{opt}} \approx \left( \frac{z_{1-\alpha/2} + z_{1-\beta}}{d} \right)^2 \quad \text{mit der Effektstärke} \,\, d = \frac{\delta}{s} \]
+        \[ \text{Einseitig:} \quad n_{\text{opt}} \approx \left( \frac{z_{1-\alpha} + z_{1-\beta}}{d} \right)^2 \]
+    </div>
+</div>
+
+<script>
+// Voreingestellte Datensätze
+const datasets = {
+    ds1: [105, 98, 112, 102, 115, 96, 108, 104, 110, 99, 103, 107, 111, 101, 106, 113, 95, 104, 109, 102, 118, 100, 105, 106, 111], 
+    ds2: [495, 502, 488, 501, 493, 499, 506, 491, 497, 503, 490, 496, 502, 494, 498], 
+    ds3: [12, -5, 22, 35, 8, -14, 19, 27, 5, 14, -3, 31, 18, 9, 25, -8, 11, 16, 29, 4, 21, -2, 17, 33, 13, 7, -10, 24, 20, 15, 2, 28, 19, -6, 12, 22, 30, 5, 11, 16]
+};
+
+// Mathematische Verteilungsfunktionen (statistische Approximationen)
+function normalCDF(x) {
+    let t = 1 / (1 + 0.2316419 * Math.abs(x));
+    let d = 0.3989423 * Math.exp(-x * x / 2);
+    let p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+    return x > 0 ? 1 - p : p;
+}
+
+function normalQuantile(p) {
+    if (p <= 0 || p >= 1) return 0;
+    let low = -10, high = 10, mid = 0;
+    while ((high - low) > 1e-7) {
+        mid = (low + high) / 2;
+        if (normalCDF(mid) < p) low = mid;
+        else high = mid;
+    }
+    return mid;
+}
+
+function chi2Quantile(p, df) {
+    let z = normalQuantile(p);
+    let v = 2 / (9 * df);
+    return df * Math.pow(1 - v + z * Math.sqrt(v), 3);
+}
+
+function tQuantile(p, df) {
+    let z = normalQuantile(p);
+    let z2 = z * z;
+    let g1 = (z2 + 1) / 4;
+    let g2 = (5 * z2 * z2 + 16 * z2 + 3) / 96;
+    return z + (g1 * z) / df + (g2 * z) / (df * df);
+}
+
+function randomNormal(mean, stdDev) {
+    let u1 = Math.random(), u2 = Math.random();
+    while(u1 === 0) u1 = Math.random(); 
+    return Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2) * stdDev + mean;
+}
+
+function calculatePower(mu, mu0, sigma, n, alpha, testType) {
+    let df = n - 1;
+    let lambda = (mu - mu0) / (sigma / Math.sqrt(n));
+    if (testType === 'greater') {
+        return 1 - normalCDF(tQuantile(1 - alpha, df) - lambda);
+    } else if (testType === 'less') {
+        return normalCDF(tQuantile(alpha, df) - lambda);
+    } else {
+        let critT = tQuantile(1 - alpha / 2, df);
+        return (1 - normalCDF(critT - lambda)) + normalCDF(-critT - lambda);
+    }
+}
+
+// Fallzahlberechnung
+function calculateRequiredN(delta, sigma, alpha, power, testType) {
+    let zAlpha = normalQuantile(testType === 'two-sided' ? 1 - alpha/2 : 1 - alpha);
+    let zBeta = normalQuantile(power);
+    let es = Math.abs(delta) / sigma;
+    let nInit = Math.pow((zAlpha + zBeta) / es, 2);
+    
+    // Iterative Verfeinerung für t-Verteilung
+    let nOpt = Math.ceil(nInit);
+    for(let i=0; i<10; i++) {
+        let df = Math.max(2, nOpt - 1);
+        let tAlpha = tQuantile(testType === 'two-sided' ? 1 - alpha/2 : 1 - alpha, df);
+        let tBeta = tQuantile(power, df);
+        nOpt = Math.ceil(Math.pow((tAlpha + tBeta) / es, 2));
+    }
+    return Math.max(3, nOpt);
+}
+
+function toggleDataMode() {
+    const src = document.getElementById('dataSource').value;
+    const simPanel = document.getElementById('simulationParameters');
+    const nInput = document.getElementById('n');
+    
+    if (src === 'simulate') {
+        simPanel.style.display = 'block';
+        nInput.disabled = false;
+    } else {
+        simPanel.style.display = 'none';
+        nInput.value = datasets[src].length;
+        nInput.disabled = true; 
+    }
+    updateHypothesisDisplay();
+}
+
+function updateHypothesisDisplay() {
+    const mu0 = document.getElementById('mu0').value || "100";
+    const testType = document.getElementById('testType').value;
+    let el = document.getElementById('hypothesisFormula');
+    
+    if (testType === 'two-sided') {
+        el.innerHTML = `\\[ H_0: \\mu = ${mu0} \\quad \\text{vs.} \\quad H_1: \\mu \\neq ${mu0} \\]`;
+    } else if (testType === 'greater') {
+        el.innerHTML = `\\[ H_0: \\mu \\le ${mu0} \\quad \\text{vs.} \\quad H_1: \\mu > ${mu0} \\]`;
+    } else {
+        el.innerHTML = `\\[ H_0: \\mu \\ge ${mu0} \\quad \\text{vs.} \\quad H_1: \\mu < ${mu0} \\]`;
+    }
+    if(window.MathJax && MathJax.typeset) MathJax.typeset([el]);
+}
+
+let chartInstance = null;
+
+function runAnalysis() {
+    const src = document.getElementById('dataSource').value;
+    const mu0 = parseFloat(document.getElementById('mu0').value);
+    const testType = document.getElementById('testType').value;
+    const alpha = parseFloat(document.getElementById('alpha').value);
+    const delta = parseFloat(document.getElementById('delta').value);
+    const targetPower = parseFloat(document.getElementById('targetPower').value);
+    
+    let n = parseInt(document.getElementById('n').value);
+    let data = [];
+    
+    // Daten beschaffen
+    if (src === 'simulate') {
+        const trueMu = parseFloat(document.getElementById('trueMu').value);
+        const trueSigma = parseFloat(document.getElementById('trueSigma').value);
+        for (let i = 0; i < n; i++) data.push(randomNormal(trueMu, trueSigma));
+    } else {
+        data = datasets[src];
+        n = data.length;
+    }
+    
+    // Deskriptive Kennzahlen
+    let sum = data.reduce((a,b) => a+b, 0);
+    let mean = sum / n;
+    let sumSqDiff = data.reduce((a,b) => a + Math.pow(b - mean, 2), 0);
+    let variance = sumSqDiff / (n - 1);
+    let sigmaEst = Math.sqrt(variance);
+    let stdError = sigmaEst / Math.sqrt(n);
+    let df = n - 1;
+    
+    // t-Test Statistik
+    let tStat = (mean - mu0) / stdError;
+    let pValue = (testType === 'greater') ? (1 - normalCDF(tStat)) : 
+                 (testType === 'less') ? normalCDF(tStat) : 2 * (1 - normalCDF(Math.abs(tStat)));
+    
+    // Konfidenzintervalle
+    let tCrit = tQuantile(1 - alpha / 2, df);
+    let muCI = [mean - tCrit * stdError, mean + tCrit * stdError];
+    let varCI = [(df * variance) / chi2Quantile(1 - alpha / 2, df), (df * variance) / chi2Quantile(alpha / 2, df)];
+    
+    // Fallzahlplanung & Power
+    let nOpt = calculateRequiredN(delta, sigmaEst, alpha, targetPower, testType);
+    let muH1 = (testType === 'less') ? mu0 - Math.abs(delta) : mu0 + Math.abs(delta);
+    let currentPowerAtDelta = calculatePower(muH1, mu0, sigmaEst, n, alpha, testType);
+    
+    // Textausgabe schreiben
+    let out = `=== STICHPROBEN-KENNZAHLEN ===\n`;
+    out += `Stichprobenumfang (N)  = ${n}\n`;
+    out += `Mittelwert (empirisch)  = ${mean.toFixed(3)}\n`;
+    out += `Varianz (s²)            = ${variance.toFixed(3)} (s = ${sigmaEst.toFixed(3)})\n\n`;
+    
+    out += `=== SCHÄTZUNG UND KONFIDENZINTERVALLE (${((1-alpha)*100).toFixed(0)}%) ===\n`;
+    out += `95%-KI für μ:           [${muCI[0].toFixed(3)}; ${muCI[1].toFixed(3)}]\n`;
+    out += `95%-KI für σ²:          [${varCI[0].toFixed(3)}; ${varCI[1].toFixed(3)}]\n\n`;
+    
+    out += `=== TESTSTATISTIK & ENTSCHEIDUNG ===\n`;
+    out += `Prüfgröße (t-Statistik) = ${tStat.toFixed(3)}\n`;
+    out += `p-Wert                  = ${pValue.toFixed(5)}\n`;
+    out += `Entscheidung            = ${pValue < alpha ? 'H0 ABLEHNEN (Signifikant)' : 'H0 BEIBEHALTEN'}\n\n`;
+    
+    out += `=== FALLZAHLPLANUNG & TESTSTÄRKE ===\n`;
+    out += `Empirische Power bei aktuellem n=${n}:   ${(currentPowerAtDelta * 100).toFixed(1)}%\n`;
+    out += `Benötigte Fallzahl (n_opt) für ${targetPower*100}% Power\n`;
+    out += `bei Mindestabweichung δ=±${Math.abs(delta)}:   ${nOpt} Probanden/Messungen.`;
+    
+    document.getElementById('output').innerText = out;
+
+    // --- Diagramm erzeugen (Chart.js) ---
+    let n_low = Math.max(3, Math.round(n * 0.5));
+    let n_high = Math.round(n * 2);
+    
+    let dCurrent = [], dOpt = [], dLow = [], dHigh = [];
+    let span = Math.abs(delta) * 2.2;
+    let xMin = mu0 - span, xMax = mu0 + span;
+    let steps = 120;
+    
+    for (let i = 0; i <= steps; i++) {
+        let x = xMin + (xMax - xMin) * (i / steps);
+        dCurrent.push({x: x, y: calculatePower(x, mu0, sigmaEst, n, alpha, testType)});
+        dOpt.push({x: x, y: calculatePower(x, mu0, sigmaEst, nOpt, alpha, testType)});
+        dLow.push({x: x, y: calculatePower(x, mu0, sigmaEst, n_low, alpha, testType)});
+        dHigh.push({x: x, y: calculatePower(x, mu0, sigmaEst, n_high, alpha, testType)});
+    }
+
+    // Spezifische Highlight-Punkte (H0 und Alternativhypothesen-Abweichung)
+    let pAlphaCurrent = { x: mu0, y: calculatePower(mu0, mu0, sigmaEst, n, alpha, testType) };
+    let pAlphaOpt = { x: mu0, y: calculatePower(mu0, mu0, sigmaEst, nOpt, alpha, testType) };
+    let pPowerCurrent = { x: muH1, y: currentPowerAtDelta };
+    let pPowerOpt = { x: muH1, y: calculatePower(muH1, mu0, sigmaEst, nOpt, alpha, testType) };
+
+    if (chartInstance) chartInstance.destroy();
+
+    const ctx = document.getElementById('powerChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+        type: 'scatter', // Verwende scatter, damit {x, y} Objekte immer fehlerfrei gezeichnet werden
+        data: {
+            datasets: [
+                { label: `Aktuelles n = ${n}`, data: dCurrent, borderColor: '#3498db', borderWidth: 3, showLine: true, pointRadius: 0 },
+                { label: `Optimiertes n_opt = ${nOpt} (Ziel-Power)`, data: dOpt, borderColor: '#e67e22', borderWidth: 3, showLine: true, pointRadius: 0 },
+                { label: `Reduziertes n = ${n_low}`, data: dLow, borderColor: '#e74c3c', borderWidth: 1.5, borderDash: [4,4], showLine: true, pointRadius: 0 },
+                { label: `Erhöhtes n = ${n_high}`, data: dHigh, borderColor: '#2ecc71', borderWidth: 1.5, borderDash: [4,4], showLine: true, pointRadius: 0 },
+                {
+                    label: 'Alpha-Fehler (bei H0)',
+                    data: [pAlphaCurrent, pAlphaOpt],
+                    backgroundColor: '#2c3e50',
+                    pointRadius: 6,
+                    pointStyle: 'circle'
+                },
+                {
+                    label: 'Power bei Mindestabweichung (H1)',
+                    data: [pPowerCurrent, pPowerOpt],
+                    backgroundColor: '#9b59b6',
+                    pointRadius: 7,
+                    pointStyle: 'rect'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { type: 'linear', title: { display: true, text: 'Wahrer Mittelwert (μ)', font: { weight: 'bold' } } },
+                y: { min: 0, max: 1.02, title: { display: true, text: 'Güte / Ablehnwahrscheinlichkeit', font: { weight: 'bold' } }, ticks: { callback: v => (v * 100).toFixed(0) + '%' } }
+            },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 20 } }
+            }
+        }
+    });
+}
+
+window.onload = function() {
+    toggleDataMode();
+    runAnalysis();
+};
+</script>
+</body>
+</html>
+
