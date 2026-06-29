@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium 2-SP-t-Test Kaskade &amp; Intervall-Plot</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #101016 0%, #050508 100%);
+            --card-bg: rgba(255, 255, 255, 0.02);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f0f0f5;
+            --text-muted: #9da0b0;
+            --accent-gold: #d4af37;
+            --accent-blue: #4a90e2;
+            --accent-purple: #9b59b6;
+            --danger-red: #ff4d4d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            padding: 30px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 35px;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--accent-gold);
+            font-size: 2.4rem;
+            font-weight: 300;
+            margin: 0 0 10px 0;
+            letter-spacing: 1px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 430px 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(15px);
+        }
+
+        .card h2 {
+            color: var(--accent-blue);
+            font-size: 1.25rem;
+            font-weight: 400;
+            margin-top: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        select, textarea, input[type="text"] {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.95rem;
+            padding: 10px;
+            box-sizing: border-box;
+            transition: all 0.3s;
+        }
+
+        textarea {
+            height: 70px;
+            resize: vertical;
+            font-family: monospace;
+        }
+
+        select:focus, textarea:focus {
+            border-color: var(--accent-blue);
+            outline: none;
+        }
+
+        .row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #2980b9 100%);
+            border: none;
+            width: 100%;
+            padding: 12px;
+            color: white;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.2);
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(74, 144, 226, 0.35);
+        }
+
+        /* Entscheidungsbaum (CSS Flow) */
+        .tree-container {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .tree {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            font-size: 0.9rem;
+        }
+
+        .tree-node {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--card-border);
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 180px;
+            transition: all 0.3s;
+        }
+
+        .tree-branches {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            width: 100%;
+        }
+
+        .branch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        /* Aktive Pfade hervorheben */
+        .node-active-blue {
+            border-color: var(--accent-blue);
+            background: rgba(74, 144, 226, 0.15);
+            color: #d6eaf8;
+            box-shadow: 0 0 12px rgba(74, 144, 226, 0.3);
+        }
+        
+        .node-active-red {
+            border-color: var(--danger-red);
+            background: rgba(255, 77, 77, 0.15);
+            color: #fdeaea;
+            box-shadow: 0 0 12px rgba(255, 77, 77, 0.3);
+        }
+
+        .node-inactive {
+            opacity: 0.25;
+        }
+
+        /* Output Tabelle */
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+
+        .stats-table th {
+            text-align: left;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--card-border);
+            padding: 6px 4px;
+        }
+
+        .stats-table td {
+            padding: 8px 4px;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 340px;
+            width: 100%;
+            margin-bottom: 25px;
+        }
+
+        .ci-box {
+            background: rgba(212, 175, 55, 0.05);
+            border-left: 4px solid var(--accent-gold);
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Zweistichproben-Kaskadierung &amp; Schätzgenauigkeit</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0;">Visualisierung des zweistufigen Entscheidungsbaums und der Mittelwert-Konfidenzintervalle</p>
+    </header>
+
+    <div class="dashboard">
+        <div class="card">
+            <h2>Eingabeparameter</h2>
+            
+            <div class="form-group">
+                <label for="sample-select">Beispieldatensatz laden</label>
+                <select id="sample-select" onchange="loadPreset()">
+                    <option value="homo">Homogene Varianzen (Klassischer t-Test)</option>
+                    <option value="hetero">Heterogene Varianzen (Welch-Test)</option>
+                    <option value="custom">-- Eigene Dateneingabe --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="data-1">Stichprobe 1 ($X_1$), kommagetrennt</label>
+                <textarea id="data-1"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="data-2">Stichprobe 2 ($X_2$), kommagetrennt</label>
+                <textarea id="data-2"></textarea>
+            </div>
+
+            <div class="row-2">
+                <div class="form-group">
+                    <label for="alpha-f">$\alpha$ (F-Test)</label>
+                    <select id="alpha-f" onchange="calculateAll()">
+                        <option value="0.05" selected>0.05</option>
+                        <option value="0.01">0.01</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="alpha-t">$\alpha$ (t-Test)</label>
+                    <select id="alpha-t" onchange="calculateAll()">
+                        <option value="0.05" selected>0.05</option>
+                        <option value="0.01">0.01</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="calculateAll()">Analyse ausführen</button>
+            
+            <table class="stats-table">
+                <thead>
+                    <tr><th>Parameter</th><th>Gruppe 1</th><th>Gruppe 2</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Umfang ($n$)</td><td id="m-n1">-</td><td id="m-n2">-</td></tr>
+                    <tr><td>Mittelwert ($\bar{x}$)</td><td id="m-m1">-</td><td id="m-m2">-</td></tr>
+                    <tr><td>Varianz ($s^2$)</td><td id="m-v1">-</td><td id="m-v2">-</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Zweistufiger Entscheidungsbaum &amp; Intervallschätzung</h2>
+
+            <div class="tree-container">
+                <div class="tree">
+                    <div class="tree-node" id="node-f-test">
+                        <strong>Stufe 1: Levene / F-Test</strong><br>
+                        <span id="tree-f-stats">Prüfe $H_0: \sigma_1^2 = \sigma_2^2$</span>
+                    </div>
+                    
+                    <div class="tree-branches">
+                        <div class="branch">
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">beibehalten ($p \ge \alpha$)</div>
+                            <div class="tree-node" id="node-student">
+                                <strong>Stufe 2a: Student t-Test</strong><br>
+                                <span style="font-size:0.8rem;">Gepoolte Varianz</span>
+                            </div>
+                            <div class="tree-node" id="node-student-res" style="font-size:0.85rem;">-</div>
+                        </div>
+                        
+                        <div class="branch">
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">abgelehnt ($p < \alpha$)</div>
+                            <div class="tree-node" id="node-welch">
+                                <strong>Stufe 2b: Welch-Test</strong><br>
+                                <span style="font-size:0.8rem;">Satterthwaite $df$</span>
+                            </div>
+                            <div class="tree-node" id="node-welch-res" style="font-size:0.85rem;">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <label>Mittelwerte ($\bar{x}$) mit zugehörigen $95\%$-Konfidenzintervallen</label>
+            <div class="chart-container">
+                <canvas id="intervalChart"></canvas>
+            </div>
+
+            <div class="ci-box">
+                <strong style="color:var(--accent-gold);">Effektstärke (Differenz der Mittelwerte $\bar{x}_1 - \bar{x}_2$):</strong>
+                <div id="ci-result" style="font-size:1.1rem; margin-top:5px; font-weight:500;">
+                    [ - ; - ]
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- Statistische Basisfunktionen ---
+function stdNormalCDF(x) {
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989423 * Math.exp(-x * x / 2);
+    let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+    return x > 0 ? 1 - p : p;
+}
+
+function tCDF(t, df) {
+    const x = t;
+    const d1 = 1 / (4 * df);
+    const d3 = 5 / (96 * df * df * df);
+    const z = x * (1 - d1 + d3) / Math.sqrt(1 + x*x / (2*df));
+    let p = stdNormalCDF(z);
+    if (t < 0 && p > 0.5) p = 1 - p;
+    if (t > 0 && p < 0.5) p = 1 - p;
+    return p;
+}
+
+function tQuantile(prob, df) {
+    let low = -30, high = 30, mid = 0;
+    for (let i = 0; i < 80; i++) {
+        mid = (low + high) / 2;
+        if (tCDF(mid, df) < prob) low = mid;
+        else high = mid;
+    }
+    return mid;
+}
+
+function betaInc(a, b, x) {
+    if (x === 0) return 0;
+    if (x === 1) return 1;
+    const lbeta = logGamma(a) + logGamma(b) - logGamma(a + b);
+    let front = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lbeta) / a;
+    if (x > (a + 1) / (a + b + 2)) return 1 - betaInc(b, a, 1 - x);
+    return front * (1 + (a * (a + b) * x) / (a + 1));
+}
+
+function logGamma(z) {
+    return (z - 0.5) * Math.log(z) - z + 0.5 * Math.log(2 * Math.PI) + 1 / (12 * z);
+}
+
+function fCDF(f, df1, df2) {
+    if (f <= 0) return 0;
+    const x = (df1 * f) / (df1 * f + df2);
+    return betaInc(df1 / 2, df2 / 2, x);
+}
+
+// Preset Datenpaare
+const presets = {
+    homo: {
+        d1: "12.5, 11.8, 14.2, 13.0, 11.9, 12.7",
+        d2: "15.4, 14.8, 16.1, 14.0, 15.2, 15.9"
+    },
+    hetero: {
+        d1: "10.1, 9.9, 10.2, 10.0, 9.8",
+        d2: "18.2, 6.5, 22.1, 4.2, 13.9"
+    }
+};
+
+function loadPreset() {
+    const choice = document.getElementById('sample-select').value;
+    if (choice !== 'custom') {
+        document.getElementById('data-1').value = presets[choice].d1;
+        document.getElementById('data-2').value = presets[choice].d2;
+        calculateAll();
+    }
+}
+
+let chart = null;
+
+function calculateAll() {
+    const parseData = (id) => document.getElementById(id).value.split(',').map(x => parseFloat(x.trim())).filter(x => !isNaN(x));
+    const s1 = parseData('data-1');
+    const s2 = parseData('data-2');
+
+    if(s1.length < 2 || s2.length < 2) return;
+
+    const alphaF = parseFloat(document.getElementById('alpha-f').value);
+    const alphaT = parseFloat(document.getElementById('alpha-t').value);
+
+    const getStats = (arr) => {
+        const n = arr.length;
+        const mean = arr.reduce((a,b) => a+b, 0) / n;
+        const variance = arr.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / (n - 1);
+        return { n, mean, var: variance, sd: Math.sqrt(variance) };
+    };
+
+    const stats1 = getStats(s1);
+    const stats2 = getStats(s2);
+
+    document.getElementById('m-n1').innerText = stats1.n;
+    document.getElementById('m-n2').innerText = stats2.n;
+    document.getElementById('m-m1').innerText = stats1.mean.toFixed(3);
+    document.getElementById('m-m2').innerText = stats2.mean.toFixed(3);
+    document.getElementById('m-v1').innerText = stats1.var.toFixed(3);
+    document.getElementById('m-v2').innerText = stats2.var.toFixed(3);
+
+    // STUFE 1: F-Test berechnen
+    let fEmp, dfNumerator, dfDenominator;
+    if(stats1.var >= stats2.var) {
+        fEmp = stats1.var / stats2.var;
+        dfNumerator = stats1.n - 1;
+        dfDenominator = stats2.n - 1;
+    } else {
+        fEmp = stats2.var / stats1.var;
+        dfNumerator = stats2.n - 1;
+        dfDenominator = stats1.n - 1;
+    }
+    let pF = 2 * (1 - fCDF(fEmp, dfNumerator, dfDenominator));
+    if (pF > 1) pF = 1;
+    const fReject = pF < alphaF;
+
+    // Reset aller Baumknoten-Styles
+    document.getElementById('node-f-test').className = 'tree-node';
+    document.getElementById('node-student').className = 'tree-node node-inactive';
+    document.getElementById('node-welch').className = 'tree-node node-inactive';
+    document.getElementById('node-student-res').className = 'tree-node node-inactive';
+    document.getElementById('node-welch-res').className = 'tree-node node-inactive';
+    
+    document.getElementById('node-f-test').classList.add(fReject ? 'node-active-red' : 'node-active-blue');
+    document.getElementById('tree-f-stats').innerHTML = `$F = ${fEmp.toFixed(2)}$, $p = ${pF.toFixed(4)}$`;
+
+    // STUFE 2: t-Test Kaskade & Intervallgrenzen für die Gruppen
+    let tEmp, dfTotal, pT, ciLower, ciUpper;
+    const meanDiff = stats1.mean - stats2.mean;
+
+    // Eigenständige Konfidenzintervalle für die absoluten Gruppenmittelwerte (95%)
+    const calcGroupCI = (stats) => {
+        const crit = tQuantile(0.975, stats.n - 1);
+        const margin = crit * (stats.sd / Math.sqrt(stats.n));
+        return [stats.mean - margin, stats.mean + margin];
+    };
+    const ciGroup1 = calcGroupCI(stats1);
+    const ciGroup2 = calcGroupCI(stats2);
+
+    if (!fReject) {
+        // Pfad: Student t-Test
+        document.getElementById('node-student').className = 'tree-node node-active-blue';
+        dfTotal = stats1.n + stats2.n - 2;
+        const pooledVar = ((stats1.n - 1) * stats1.var + (stats2.n - 1) * stats2.var) / dfTotal;
+        const standardError = Math.sqrt(pooledVar * (1 / stats1.n + 1 / stats2.n));
+        
+        tEmp = meanDiff / standardError;
+        pT = 2 * (1 - tCDF(Math.abs(tEmp), dfTotal));
+        
+        const tCrit = tQuantile(1 - alphaT / 2, dfTotal);
+        ciLower = meanDiff - tCrit * standardError;
+        ciUpper = meanDiff + tCrit * standardError;
+
+        const resBox = document.getElementById('node-student-res');
+        resBox.className = 'tree-node ' + (pT < alphaT ? 'node-active-red' : 'node-active-blue');
+        resBox.innerHTML = `$t = ${tEmp.toFixed(2)}$, $p = ${pT.toFixed(4)}$<br><b>${pT < alphaT ? 'H₀ ablehnen' : 'H₀ beibehalten'}</b>`;
+        document.getElementById('node-welch-res').innerText = '-';
+    } else {
+        // Pfad: Welch-Test
+        document.getElementById('node-welch').className = 'tree-node node-active-red';
+        const se1 = stats1.var / stats1.n;
+        const se2 = stats2.var / stats2.n;
+        const standardErrorWelch = Math.sqrt(se1 + se2);
+        
+        tEmp = meanDiff / standardErrorWelch;
+        dfTotal = Math.pow(se1 + se2, 2) / (Math.pow(se1, 2) / (stats1.n - 1) + Math.pow(se2, 2) / (stats2.n - 1));
+        pT = 2 * (1 - tCDF(Math.abs(tEmp), dfTotal));
+
+        const tCrit = tQuantile(1 - alphaT / 2, dfTotal);
+        ciLower = meanDiff - tCrit * standardErrorWelch;
+        ciUpper = meanDiff + tCrit * standardErrorWelch;
+
+        const resBox = document.getElementById('node-welch-res');
+        resBox.className = 'tree-node ' + (pT < alphaT ? 'node-active-red' : 'node-active-blue');
+        resBox.innerHTML = `$t = ${tEmp.toFixed(2)}$, $p = ${pT.toFixed(4)}$<br><b>${pT < alphaT ? 'H₀ ablehnen' : 'H₀ beibehalten'}</b>`;
+        document.getElementById('node-student-res').innerText = '-';
+    }
+
+    document.getElementById('ci-result').innerText = `[ ${ciLower.toFixed(3)} ; ${ciUpper.toFixed(3)} ]`;
+    
+    // MathJax bitten, die neu geschriebenen Knoten-Formeln zu rendern
+    if (window.MathJax && MathJax.typesetPromise) {
+        MathJax.typesetPromise();
+    }
+
+    // Interval Plot erzeugen
+    renderIntervalChart(stats1.mean, ciGroup1, stats2.mean, ciGroup2);
+}
+
+function renderIntervalChart(m1, ci1, m2, ci2) {
+    if (chart) chart.destroy();
+
+    const ctx = document.getElementById('intervalChart').getContext('2d');
+    
+    // Custom Plugin zum Zeichnen der CI-Fehlerbalken (Error Bars)
+    const errorBarsPlugin = {
+        id: 'errorBars',
+        afterDatasetsDraw: (chart) => {
+            const { ctx, scales: { y } } = chart;
+            ctx.save();
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([]);
+
+            const datasets = chart.data.datasets;
+            
+            // Dataset 0: Gruppe 1
+            const meta1 = chart.getDatasetMeta(0);
+            const pt1 = meta1.data[0];
+            ctx.strokeStyle = '#4a90e2';
+            ctx.beginPath();
+            ctx.moveTo(pt1.x, y.getPixelForValue(ci1[0]));
+            ctx.lineTo(pt1.x, y.getPixelForValue(ci1[1]));
+            ctx.stroke();
+            // Querstreben oben/unten
+            ctx.beginPath();
+            ctx.moveTo(pt1.x - 8, y.getPixelForValue(ci1[0])); ctx.lineTo(pt1.x + 8, y.getPixelForValue(ci1[0]));
+            ctx.moveTo(pt1.x - 8, y.getPixelForValue(ci1[1])); ctx.lineTo(pt1.x + 8, y.getPixelForValue(ci1[1]));
+            ctx.stroke();
+
+            // Dataset 1: Gruppe 2
+            const meta2 = chart.getDatasetMeta(1);
+            const pt2 = meta2.data[0];
+            ctx.strokeStyle = '#9b59b6';
+            ctx.beginPath();
+            ctx.moveTo(pt2.x, y.getPixelForValue(ci2[0]));
+            ctx.lineTo(pt2.x, y.getPixelForValue(ci2[1]));
+            ctx.stroke();
+            // Querstreben oben/unten
+            ctx.beginPath();
+            ctx.moveTo(pt2.x - 8, y.getPixelForValue(ci2[0])); ctx.lineTo(pt2.x + 8, y.getPixelForValue(ci2[0]));
+            ctx.moveTo(pt2.x - 8, y.getPixelForValue(ci2[1])); ctx.lineTo(pt2.x + 8, y.getPixelForValue(ci2[1]));
+            ctx.stroke();
+
+            ctx.restore();
+        }
+    };
+
+    chart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [
+                {
+                    label: 'Gruppe 1 (X1)',
+                    data: [{ x: 1, y: m1 }],
+                    backgroundColor: '#4a90e2',
+                    pointRadius: 7,
+                    pointHoverRadius: 9
+                },
+                {
+                    label: 'Gruppe 2 (X2)',
+                    data: [{ x: 2, y: m2 }],
+                    backgroundColor: '#9b59b6',
+                    pointRadius: 7,
+                    pointHoverRadius: 9
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    min: 0.4,
+                    max: 2.6,
+                    ticks: {
+                        callback: function(value) {
+                            if (value === 1) return 'Gruppe 1';
+                            if (value === 2) return 'Gruppe 2';
+                            return '';
+                        },
+                        color: '#9da0b0'
+                    },
+                    grid: { display: false }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#9da0b0' },
+                    title: { display: true, text: 'Zielvariable (Skalenwerte)', color: '#fff' }
+                }
+            },
+            plugins: {
+                legend: { labels: { color: '#fff' } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const isG1 = ctx.datasetIndex === 0;
+                            const interval = isG1 ? ci1 : ci2;
+                            return `${ctx.dataset.label}: Mittelwert = ${ctx.raw.y.toFixed(2)} (95%-KI: [${interval[0].toFixed(2)}; ${interval[1].toFixed(2)}])`;
+                        }
+                    }
+                }
+            }
+        },
+        plugins: [errorBarsPlugin]
+    });
+}
+
+window.onload = function() {
+    loadPreset();
+};
+</script>
+</body>
+</html>
+
