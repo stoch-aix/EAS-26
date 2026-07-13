@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wilcoxon-Rangsummentest – interaktive Illustration</title>
+<style>
+:root{
+  --bg:#f4f7fb; --card:#fff; --ink:#172033; --muted:#667085; --line:#d9e1ec;
+  --red:#e5484d; --blue:#3478f6; --accent:#6d5dfc; --soft:#eef2ff;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+background:linear-gradient(135deg,#f8faff 0%,#eef3fb 100%);color:var(--ink)}
+main{max-width:1180px;margin:0 auto;padding:28px 18px 48px}
+header{margin-bottom:20px}
+h1{margin:0 0 7px;font-size:clamp(1.7rem,3vw,2.6rem);letter-spacing:-.035em}
+.subtitle{color:var(--muted);max-width:850px;line-height:1.55}
+.grid{display:grid;grid-template-columns:1.05fr .95fr;gap:18px}
+.card{background:rgba(255,255,255,.96);border:1px solid rgba(205,215,230,.8);border-radius:18px;
+box-shadow:0 12px 30px rgba(31,52,88,.07);padding:20px}
+.full{grid-column:1/-1}
+h2{font-size:1.05rem;margin:0 0 14px}
+label{display:block;font-weight:700;font-size:.9rem;margin-bottom:7px}
+.sample-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+textarea{width:100%;min-height:90px;resize:vertical;border:1px solid var(--line);border-radius:12px;
+padding:11px 12px;font:inherit;line-height:1.45;color:var(--ink);outline:none}
+textarea:focus,select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(109,93,252,.12)}
+.red-label{color:var(--red)} .blue-label{color:var(--blue)}
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;align-items:end}
+button{border:0;border-radius:11px;padding:10px 14px;font-weight:750;cursor:pointer;background:var(--accent);color:#fff}
+button.secondary{background:#edf1f7;color:#344054}
+button:hover{filter:brightness(.98);transform:translateY(-1px)}
+select,input[type=number]{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;color:var(--ink)}
+.control-group label{font-size:.76rem;color:var(--muted);margin-bottom:4px}
+.legend{display:flex;gap:18px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:.88rem;margin-bottom:8px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px}
+.plot-wrap{overflow-x:auto}
+svg{width:100%;min-width:760px;height:360px;display:block}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.stat{background:#f8faff;border:1px solid #e6ebf3;border-radius:13px;padding:13px}
+.stat .k{font-size:.78rem;color:var(--muted);margin-bottom:4px}
+.stat .v{font-size:1.28rem;font-weight:820}
+.highlight{background:linear-gradient(135deg,#eef2ff,#f8f7ff);border-color:#dcd7ff}
+.formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#101828;color:#f8fafc;
+border-radius:13px;padding:14px 16px;line-height:1.65;overflow:auto}
+.note{font-size:.88rem;color:var(--muted);line-height:1.55;margin-top:12px}
+.table-wrap{overflow:auto;max-height:400px;border:1px solid #e5eaf2;border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{padding:9px 11px;border-bottom:1px solid #edf0f5;text-align:center;white-space:nowrap}
+th{position:sticky;top:0;background:#f7f9fc;z-index:1;color:#475467}
+tr:last-child td{border-bottom:0}
+.badge{display:inline-flex;padding:3px 8px;border-radius:999px;font-size:.78rem;font-weight:750}
+.badge.red{color:#b4232b;background:#fff0f0}.badge.blue{color:#175cd3;background:#eef4ff}
+.status{margin-top:11px;padding:11px 13px;border-radius:11px;background:#f8fafc;color:#475467;font-size:.9rem}
+.error{background:#fff1f1;color:#b42318}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.sample-row{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Wilcoxon-Rangsummentest</h1>
+  <div class="subtitle">
+    Zwei unabhängige Stichproben werden gemeinsam geordnet. Die Beobachtungen der zweiten Stichprobe
+    sind blau markiert; die Summe ihrer Rangzahlen ist die Wilcoxon-Teststatistik
+    <strong>W<sub>2</sub></strong>.
+  </div>
+</header>
+
+<div class="grid">
+<section class="card">
+  <h2>1. Daten eingeben</h2>
+  <div class="sample-row">
+    <div>
+      <label class="red-label" for="sample1">Stichprobe 1 (rot)</label>
+      <textarea id="sample1">4, 7, 9, 10, 13, 15</textarea>
+    </div>
+    <div>
+      <label class="blue-label" for="sample2">Stichprobe 2 (blau)</label>
+      <textarea id="sample2">6, 8, 12, 14, 17</textarea>
+    </div>
+  </div>
+  <div class="controls">
+    <button id="calculate">Neu berechnen</button>
+    <button class="secondary" id="example1">Getrennte Gruppen</button>
+    <button class="secondary" id="example2">Starke Überlappung</button>
+    <button class="secondary" id="example3">Mit Bindungen</button>
+  </div>
+  <div id="status" class="status">Die Rangzahlen werden automatisch aktualisiert.</div>
+</section>
+
+<section class="card">
+  <h2>2. Testeinstellungen</h2>
+  <div class="controls" style="margin-top:0">
+    <div class="control-group">
+      <label for="alternative">Alternativhypothese</label>
+      <select id="alternative">
+        <option value="two-sided">zweiseitig: Lage verschieden</option>
+        <option value="greater">Stichprobe 2 liegt eher rechts</option>
+        <option value="less">Stichprobe 2 liegt eher links</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="alpha">Signifikanzniveau α</label>
+      <input id="alpha" type="number" min="0.001" max="0.2" step="0.001" value="0.05">
+    </div>
+  </div>
+  <div class="note">
+    Es wird die Normalapproximation mit Bindungskorrektur und Stetigkeitskorrektur verwendet.
+    Bei kleinen Stichproben ohne Bindungen wird zusätzlich ein exakter Permutations-p-Wert berechnet.
+  </div>
+</section>
+
+<section class="card full">
+  <h2>3. Gemeinsame Ordnung, Ordnungsstatistiken und Rangzahlen</h2>
+  <div class="legend">
+    <span><i class="dot" style="background:var(--red)"></i>Stichprobe 1</span>
+    <span><i class="dot" style="background:var(--blue)"></i>Stichprobe 2</span>
+    <span>Oben: Ordnungsstatistik der Gesamtstichprobe</span>
+    <span>Unten: Rangzahl</span>
+  </div>
+  <div class="plot-wrap"><svg id="plot" viewBox="0 0 1080 360" aria-label="Rangdarstellung"></svg></div>
+</section>
+
+<section class="card">
+  <h2>4. Teststatistik</h2>
+  <div class="stats">
+    <div class="stat"><div class="k">Umfang Stichprobe 1</div><div class="v" id="n1">–</div></div>
+    <div class="stat"><div class="k">Umfang Stichprobe 2</div><div class="v" id="n2">–</div></div>
+    <div class="stat highlight"><div class="k">Wilcoxon-Rangsumme W₂</div><div class="v" id="W2">–</div></div>
+    <div class="stat"><div class="k">Mann-Whitney-Statistik U₂</div><div class="v" id="U2">–</div></div>
+    <div class="stat"><div class="k">Erwartungswert E(W₂)</div><div class="v" id="EW">–</div></div>
+    <div class="stat"><div class="k">Standardisierte Statistik z</div><div class="v" id="zstat">–</div></div>
+    <div class="stat"><div class="k">Approximativer p-Wert</div><div class="v" id="papprox">–</div></div>
+    <div class="stat"><div class="k">Exakter p-Wert</div><div class="v" id="pexact">–</div></div>
+  </div>
+  <div id="decision" class="status"></div>
+</section>
+
+<section class="card">
+  <h2>5. Berechnung</h2>
+  <div class="formula" id="formula"></div>
+  <div class="note">
+    Bei gleichen Werten werden mittlere Rangzahlen vergeben. Daher können Rangzahlen und Rangsumme
+    auch nichtganzzahlig sein.
+  </div>
+</section>
+
+<section class="card full">
+  <h2>6. Rangtabelle der Gesamtstichprobe</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Position</th><th>Wert</th><th>Gruppe</th><th>Rang</th><th>Beitrag zu W₂</th></tr></thead>
+      <tbody id="rankTable"></tbody>
+    </table>
+  </div>
+</section>
+</div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function parseSample(text){
+  const parts = text.trim().split(/[\s,;]+/).filter(Boolean);
+  const vals = parts.map(Number);
+  if (!vals.length || vals.some(x => !Number.isFinite(x))) throw new Error("Bitte nur gültige Zahlen eingeben.");
+  return vals;
+}
+
+function erf(x){
+  const sign=x<0?-1:1, a=Math.abs(x);
+  const t=1/(1+0.3275911*a);
+  const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-a*a);
+  return sign*y;
+}
+function Phi(x){return 0.5*(1+erf(x/Math.sqrt(2)))}
+function fmt(x,d=3){return Number.isFinite(x)?x.toFixed(d).replace(/\.?0+$/,"").replace(".",","):"–"}
+
+function rankData(a,b){
+  const all=[
+    ...a.map((v,i)=>({value:v,group:1,index:i})),
+    ...b.map((v,i)=>({value:v,group:2,index:i}))
+  ].sort((x,y)=>x.value-y.value || x.group-y.group || x.index-y.index);
+
+  let i=0;
+  const tieSizes=[];
+  while(i<all.length){
+    let j=i+1;
+    while(j<all.length && all[j].value===all[i].value) j++;
+    const rank=((i+1)+j)/2;
+    const t=j-i;
+    if(t>1) tieSizes.push(t);
+    for(let k=i;k<j;k++){all[k].rank=rank; all[k].order=k+1}
+    i=j;
+  }
+  return {all,tieSizes};
+}
+
+function combinations(n,k){
+  const out=[];
+  function rec(start,arr){
+    if(arr.length===k){out.push(arr.slice());return}
+    for(let i=start;i<=n-(k-arr.length);i++){arr.push(i);rec(i+1,arr);arr.pop()}
+  }
+  rec(1,[]);
+  return out;
+}
+
+function exactP(n1,n2,Wobs,alternative){
+  const N=n1+n2;
+  if(N>20) return null;
+  const sums=combinations(N,n2).map(c=>c.reduce((s,x)=>s+x,0));
+  const center=n2*(N+1)/2;
+  const eps=1e-12;
+  let count;
+  if(alternative==="greater") count=sums.filter(w=>w>=Wobs-eps).length;
+  else if(alternative==="less") count=sums.filter(w=>w<=Wobs+eps).length;
+  else count=sums.filter(w=>Math.abs(w-center)>=Math.abs(Wobs-center)-eps).length;
+  return count/sums.length;
+}
+
+function drawPlot(all){
+  const svg=$("plot");
+  svg.innerHTML="";
+  const NS="http://www.w3.org/2000/svg";
+  const W=1080,H=360, left=70,right=50, yAxis=190;
+  const vals=all.map(d=>d.value), min=Math.min(...vals), max=Math.max(...vals);
+  const pad=(max-min||1)*0.08;
+  const lo=min-pad, hi=max+pad;
+  const x=v=>left+(v-lo)/(hi-lo)*(W-left-right);
+  const el=(tag,attrs={},text="")=>{
+    const e=document.createElementNS(NS,tag);
+    for(const [k,v] of Object.entries(attrs)) e.setAttribute(k,v);
+    if(text!=="") e.textContent=text;
+    svg.appendChild(e); return e;
+  };
+  el("line",{x1:left,y1:yAxis,x2:W-right,y2:yAxis,stroke:"#98a2b3","stroke-width":2});
+  const ticks=6;
+  for(let i=0;i<=ticks;i++){
+    const v=lo+(hi-lo)*i/ticks, xx=x(v);
+    el("line",{x1:xx,y1:yAxis-5,x2:xx,y2:yAxis+5,stroke:"#98a2b3"});
+    el("text",{x:xx,y:yAxis+28,"text-anchor":"middle",fill:"#667085","font-size":13},fmt(v,2));
+  }
+  el("text",{x:(left+W-right)/2,y:338,"text-anchor":"middle",fill:"#475467","font-size":14,"font-weight":700},"Messwert");
+
+  const counts={};
+  all.forEach(d=>{
+    counts[d.value]=(counts[d.value]||0)+1;
+    const level=counts[d.value]-1;
+    const yy=d.group===1 ? yAxis-48-level*25 : yAxis+48+level*25;
+    const color=d.group===1?"#e5484d":"#3478f6";
+    const xx=x(d.value);
+    el("line",{x1:xx,y1:yAxis,x2:xx,y2:yy,stroke:color,"stroke-opacity":.28,"stroke-dasharray":"3 4"});
+    el("circle",{cx:xx,cy:yy,r:9,fill:color,stroke:"#fff","stroke-width":3});
+    el("text",{x:xx,y:d.group===1?yy-28:yy+38,"text-anchor":"middle",fill:"#344054","font-size":12,"font-weight":700},
+      `X(${d.order})=${fmt(d.value,2)}`);
+    el("text",{x:xx,y:d.group===1?yy-13:yy+24,"text-anchor":"middle",fill:color,"font-size":12,"font-weight":800},
+      `Rang ${fmt(d.rank,2)}`);
+  });
+  el("text",{x:14,y:70,fill:"#e5484d","font-size":13,"font-weight":800},"Stichprobe 1");
+  el("text",{x:14,y:300,fill:"#3478f6","font-size":13,"font-weight":800},"Stichprobe 2");
+}
+
+function calculate(){
+  try{
+    const a=parseSample($("sample1").value), b=parseSample($("sample2").value);
+    const n1=a.length,n2=b.length,N=n1+n2;
+    const {all,tieSizes}=rankData(a,b);
+    const W2=all.filter(d=>d.group===2).reduce((s,d)=>s+d.rank,0);
+    const U2=W2-n2*(n2+1)/2;
+    const EW=n2*(N+1)/2;
+    const tieTerm=tieSizes.reduce((s,t)=>s+(t*t*t-t),0);
+    const varW=n1*n2/12*((N+1)-tieTerm/(N*(N-1)));
+    const alt=$("alternative").value;
+    const delta=W2-EW;
+    let cc=0;
+    if(delta>0) cc=.5; else if(delta<0) cc=-.5;
+    const z=(delta-cc)/Math.sqrt(varW);
+    let p;
+    if(alt==="greater") p=1-Phi(z);
+    else if(alt==="less") p=Phi(z);
+    else p=2*(1-Phi(Math.abs(z)));
+    p=Math.max(0,Math.min(1,p));
+    const exact=tieSizes.length===0?exactP(n1,n2,W2,alt):null;
+    const alpha=Math.min(.2,Math.max(.001,Number($("alpha").value)||.05));
+
+    $("n1").textContent=n1; $("n2").textContent=n2;
+    $("W2").textContent=fmt(W2); $("U2").textContent=fmt(U2);
+    $("EW").textContent=fmt(EW); $("zstat").textContent=fmt(z);
+    $("papprox").textContent=fmt(p,4);
+    $("pexact").textContent=exact===null?"nicht verfügbar":fmt(exact,4);
+
+    const used=exact!==null?exact:p;
+    $("decision").innerHTML=used<alpha
+      ? `<strong>Entscheidung:</strong> H₀ wird zum Niveau α = ${fmt(alpha,3)} verworfen (maßgeblicher p-Wert: ${fmt(used,4)}).`
+      : `<strong>Entscheidung:</strong> H₀ wird zum Niveau α = ${fmt(alpha,3)} nicht verworfen (maßgeblicher p-Wert: ${fmt(used,4)}).`;
+
+    const ranks2=all.filter(d=>d.group===2).map(d=>fmt(d.rank,2)).join(" + ");
+    $("formula").innerHTML=
+`W₂ = Summe der Rangzahlen aus Stichprobe 2
+   = ${ranks2}
+   = ${fmt(W2)}
+
+U₂ = W₂ − n₂(n₂+1)/2
+   = ${fmt(W2)} − ${n2}·${n2+1}/2
+   = ${fmt(U2)}
+
+E(W₂) = n₂(N+1)/2 = ${fmt(EW)}`;
+
+    $("rankTable").innerHTML=all.map(d=>`<tr>
+      <td>${d.order}</td><td>${fmt(d.value,3)}</td>
+      <td><span class="badge ${d.group===1?"red":"blue"}">Stichprobe ${d.group}</span></td>
+      <td>${fmt(d.rank,2)}</td><td>${d.group===2?fmt(d.rank,2):"–"}</td></tr>`).join("");
+
+    drawPlot(all);
+    $("status").className="status";
+    $("status").textContent=tieSizes.length
+      ? `Berechnet mit mittleren Rängen; ${tieSizes.length} Bindungsgruppe(n) erkannt.`
+      : "Berechnung erfolgreich. Es liegen keine Bindungen vor.";
+  }catch(e){
+    $("status").className="status error";
+    $("status").textContent=e.message;
+  }
+}
+
+$("calculate").addEventListener("click",calculate);
+["sample1","sample2","alternative","alpha"].forEach(id=>$(id).addEventListener("input",calculate));
+$("example1").onclick=()=>{$("sample1").value="2, 3, 4, 5, 6";$("sample2").value="8, 9, 10, 11, 12";calculate()};
+$("example2").onclick=()=>{$("sample1").value="4, 7, 9, 10, 13, 15";$("sample2").value="6, 8, 12, 14, 17";calculate()};
+$("example3").onclick=()=>{$("sample1").value="3, 5, 5, 8, 11";$("sample2").value="4, 5, 7, 8, 12";calculate()};
+calculate();
+</script>
+</body>
+</html>
