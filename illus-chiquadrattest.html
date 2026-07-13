@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kontingenztafeln – interaktive Analyse</title>
+<style>
+:root{
+  --bg:#f4f7fb; --card:#fff; --ink:#172033; --muted:#667085; --line:#d9e1ec;
+  --accent:#6558d3; --accent2:#2f80ed; --good:#16803c; --bad:#c83b3b; --soft:#eef2ff;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+background:linear-gradient(135deg,#f8faff 0%,#eef3fb 100%);color:var(--ink)}
+main{max-width:1250px;margin:0 auto;padding:28px 18px 50px}
+header{margin-bottom:20px}
+h1{margin:0 0 8px;font-size:clamp(1.8rem,3vw,2.7rem);letter-spacing:-.035em}
+.subtitle{max-width:920px;color:var(--muted);line-height:1.55}
+.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+.card{background:rgba(255,255,255,.97);border:1px solid rgba(205,215,230,.85);border-radius:18px;
+box-shadow:0 12px 30px rgba(31,52,88,.07);padding:20px}
+.full{grid-column:1/-1}
+h2{font-size:1.05rem;margin:0 0 14px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.control-group label{display:block;font-size:.78rem;color:var(--muted);font-weight:700;margin-bottom:5px}
+select,input,button{font:inherit}
+select,input[type=number],input[type=text]{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;color:var(--ink);outline:none}
+select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(101,88,211,.12)}
+button{border:0;border-radius:11px;padding:10px 14px;font-weight:750;cursor:pointer;background:var(--accent);color:#fff}
+button.secondary{background:#edf1f7;color:#344054}
+button:hover{filter:brightness(.98);transform:translateY(-1px)}
+.note{font-size:.88rem;color:var(--muted);line-height:1.55;margin-top:12px}
+.table-wrap{overflow:auto;border:1px solid #e4e9f1;border-radius:13px}
+table{border-collapse:collapse;width:max-content;min-width:100%;font-size:.9rem;table-layout:auto}
+th,td{border-bottom:1px solid #edf1f5;border-right:1px solid #edf1f5;padding:8px 10px;text-align:center;white-space:nowrap}
+th{background:#f8fafc;color:#475467;font-weight:800}
+tr:last-child td{border-bottom:0}
+th:last-child,td:last-child{border-right:0}
+.cell-input{width:96px;text-align:center;border:1px solid #dfe5ee;border-radius:8px;padding:7px}
+.label-input{width:140px}
+.total{background:#f8fafc;font-weight:800;min-width:90px;padding-left:12px;padding-right:12px;overflow:visible}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.stat{background:#f8faff;border:1px solid #e6ebf3;border-radius:13px;padding:13px}
+.stat .k{font-size:.78rem;color:var(--muted);margin-bottom:4px}
+.stat .v{font-size:1.28rem;font-weight:820}
+.highlight{background:linear-gradient(135deg,#eef2ff,#f8f7ff);border-color:#dcd7ff}
+.status{margin-top:12px;padding:12px 14px;border-radius:12px;background:#f8fafc;color:#475467;font-size:.9rem;line-height:1.5}
+.success{background:#effaf2;color:#166534}.warning{background:#fff7e8;color:#8a4b08}.error{background:#fff1f1;color:#b42318}
+canvas{width:100%;height:360px;display:block;background:#fff;border-radius:12px}
+.formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#101828;color:#f8fafc;border-radius:13px;
+padding:14px 16px;line-height:1.65;overflow:auto;white-space:pre-wrap}
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.tab{background:#edf1f7;color:#344054}
+.tab.active{background:var(--accent);color:#fff}
+.small{font-size:.8rem;color:var(--muted)}
+.resid-pos{background:#edf5ff}.resid-neg{background:#fff0f0}
+@media(max-width:880px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.stats{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Analyse von Kontingenztafeln</h1>
+  <div class="subtitle">
+    Interaktive Illustration des Chi-Quadrat-Tests auf Unabhängigkeit sowie des Homogenitätstests
+    zum Vergleich diskreter Stichproben. Beobachtete und erwartete Häufigkeiten, Zellbeiträge,
+    standardisierte Residuen und Zusammenhangsmaße werden automatisch berechnet.
+  </div>
+</header>
+
+<div class="grid">
+<section class="card full">
+  <h2>1. Anwendungsbeispiel und Testart</h2>
+  <div class="controls">
+    <div class="control-group">
+      <label for="dataset">Beispieldatensatz</label>
+      <select id="dataset">
+        <option value="smoking">Rauchen und Lungenerkrankung</option>
+        <option value="therapy">Therapieerfolg in drei Gruppen</option>
+        <option value="education">Bildungsabschluss und Wahlpräferenz</option>
+        <option value="machine">Maschinentyp und Fehlerart</option>
+        <option value="survey">Kundenzufriedenheit nach Filiale</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="testType">Interpretation</label>
+      <select id="testType">
+        <option value="independence">Test auf Unabhängigkeit</option>
+        <option value="homogeneity">Vergleich diskreter Stichproben</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="alpha">Signifikanzniveau α</label>
+      <input id="alpha" type="number" min="0.001" max="0.2" step="0.001" value="0.05">
+    </div>
+    <button id="load">Beispiel laden</button>
+    <button id="recalc" class="secondary">Neu berechnen</button>
+  </div>
+  <div id="description" class="note"></div>
+</section>
+
+<section class="card full">
+  <h2>2. Beobachtete Häufigkeiten</h2>
+  <div id="editor" class="table-wrap"></div>
+  <div class="controls" style="margin-top:12px">
+    <button class="secondary" id="addRow">Zeile hinzufügen</button>
+    <button class="secondary" id="addCol">Spalte hinzufügen</button>
+    <button class="secondary" id="removeRow">Letzte Zeile entfernen</button>
+    <button class="secondary" id="removeCol">Letzte Spalte entfernen</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>3. Testergebnis</h2>
+  <div class="stats">
+    <div class="stat highlight"><div class="k">Chi-Quadrat-Statistik</div><div class="v" id="chi2">–</div></div>
+    <div class="stat"><div class="k">Freiheitsgrade</div><div class="v" id="df">–</div></div>
+    <div class="stat"><div class="k">p-Wert</div><div class="v" id="pvalue">–</div></div>
+    <div class="stat"><div class="k">Cramérs V</div><div class="v" id="cramer">–</div></div>
+    <div class="stat"><div class="k">Gesamtumfang n</div><div class="v" id="n">–</div></div>
+    <div class="stat"><div class="k">Kleinste erwartete Häufigkeit</div><div class="v" id="minExp">–</div></div>
+  </div>
+  <div id="decision" class="status"></div>
+</section>
+
+<section class="card">
+  <h2>4. Mathematische Berechnung</h2>
+  <div id="formula" class="formula"></div>
+  <div class="note">
+    Die Teststatistik summiert über alle Zellen die quadrierte Abweichung zwischen beobachteter
+    und unter H₀ erwarteter Häufigkeit, gewichtet mit der erwarteten Häufigkeit.
+  </div>
+</section>
+
+<section class="card full">
+  <div class="tabs">
+    <button class="tab active" data-view="expected">Erwartete Häufigkeiten</button>
+    <button class="tab" data-view="contributions">Chi-Quadrat-Beiträge</button>
+    <button class="tab" data-view="residuals">Standardisierte Residuen</button>
+  </div>
+  <div id="analysisTable" class="table-wrap"></div>
+  <div class="note" id="analysisNote"></div>
+</section>
+
+<section class="card full">
+  <h2>5. Grafische Darstellung</h2>
+  <div class="controls" style="margin-bottom:12px">
+    <div class="control-group">
+      <label for="chartMode">Darstellung</label>
+      <select id="chartMode">
+        <option value="stacked">Gestapelte relative Häufigkeiten</option>
+        <option value="mosaic">Mosaikplot</option>
+        <option value="residual">Residuen-Heatmap</option>
+      </select>
+    </div>
+  </div>
+  <canvas id="chart" width="1120" height="420"></canvas>
+</section>
+</div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const datasets = {
+  smoking:{
+    title:"Rauchen und Lungenerkrankung",
+    desc:"Eine Querschnittsstudie untersucht, ob Rauchstatus und Auftreten einer Lungenerkrankung unabhängig sind.",
+    rows:["Nichtraucher","Gelegenheitsraucher","Starke Raucher"],
+    cols:["Keine Erkrankung","Erkrankung"],
+    data:[[84,16],[52,18],[31,29]]
+  },
+  therapy:{
+    title:"Therapieerfolg in drei Gruppen",
+    desc:"Drei unabhängig gezogene Patientengruppen erhalten unterschiedliche Therapien. Verglichen wird die Verteilung der Behandlungsergebnisse.",
+    rows:["Therapie A","Therapie B","Therapie C"],
+    cols:["Erfolg","Teilweise","Kein Erfolg"],
+    data:[[42,18,10],[33,22,15],[51,12,7]]
+  },
+  education:{
+    title:"Bildungsabschluss und Wahlpräferenz",
+    desc:"Es wird geprüft, ob Bildungsabschluss und Wahlpräferenz in der Grundgesamtheit zusammenhängen.",
+    rows:["Berufsausbildung","Abitur","Hochschule"],
+    cols:["Partei A","Partei B","Partei C","Unentschieden"],
+    data:[[48,34,21,17],[29,43,32,16],[22,31,49,18]]
+  },
+  machine:{
+    title:"Maschinentyp und Fehlerart",
+    desc:"Mehrere Maschinentypen produzieren Bauteile. Untersucht wird, ob sich die Verteilung der Fehlerarten zwischen den Maschinen unterscheidet.",
+    rows:["Maschine 1","Maschine 2","Maschine 3"],
+    cols:["Maßfehler","Oberflächenfehler","Materialfehler"],
+    data:[[21,12,7],[14,19,7],[8,13,19]]
+  },
+  survey:{
+    title:"Kundenzufriedenheit nach Filiale",
+    desc:"Für vier Filialen wird verglichen, ob die Antwortverteilungen zur Kundenzufriedenheit übereinstimmen.",
+    rows:["Filiale Nord","Filiale Süd","Filiale West","Filiale Ost"],
+    cols:["Sehr zufrieden","Zufrieden","Unzufrieden"],
+    data:[[35,48,17],[28,51,21],[42,39,19],[31,44,25]]
+  }
+};
+
+let state = JSON.parse(JSON.stringify(datasets.smoking));
+let analysis = null;
+let activeView = "expected";
+
+function fmt(x,d=3){
+  if(!Number.isFinite(x)) return "–";
+  return x.toFixed(d).replace(/\.?0+$/,"").replace(".",",");
+}
+
+function gammaln(z){
+  const p=[676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.984369578019571e-6,1.5056327351493116e-7];
+  if(z<0.5) return Math.log(Math.PI)-Math.log(Math.sin(Math.PI*z))-gammaln(1-z);
+  z-=1;
+  let x=0.99999999999980993;
+  for(let i=0;i<p.length;i++) x+=p[i]/(z+i+1);
+  const t=z+p.length-0.5;
+  return 0.5*Math.log(2*Math.PI)+(z+0.5)*Math.log(t)-t+Math.log(x);
+}
+function gammaincQ(a,x){
+  if(x<0 || a<=0) return NaN;
+  if(x===0) return 1;
+  if(x<a+1){
+    let ap=a, del=1/a, sum=del;
+    for(let n=1;n<=200;n++){
+      ap++; del*=x/ap; sum+=del;
+      if(Math.abs(del)<Math.abs(sum)*1e-14) break;
+    }
+    const P=sum*Math.exp(-x+a*Math.log(x)-gammaln(a));
+    return Math.max(0,Math.min(1,1-P));
+  }else{
+    let b=x+1-a, c=1/1e-30, d=1/b, h=d;
+    for(let i=1;i<=200;i++){
+      const an=-i*(i-a);
+      b+=2; d=an*d+b; if(Math.abs(d)<1e-30)d=1e-30;
+      c=b+an/c; if(Math.abs(c)<1e-30)c=1e-30;
+      d=1/d; const del=d*c; h*=del;
+      if(Math.abs(del-1)<1e-14) break;
+    }
+    return Math.max(0,Math.min(1,Math.exp(-x+a*Math.log(x)-gammaln(a))*h));
+  }
+}
+
+function renderEditor(){
+  const r=state.rows.length,c=state.cols.length;
+  let html='<table><thead><tr><th></th>';
+  for(let j=0;j<c;j++) html+=`<th><input class="label-input col-label" data-j="${j}" value="${state.cols[j]}"></th>`;
+  html+='<th>Zeilensumme</th></tr></thead><tbody>';
+  for(let i=0;i<r;i++){
+    html+=`<tr><th><input class="label-input row-label" data-i="${i}" value="${state.rows[i]}"></th>`;
+    for(let j=0;j<c;j++) html+=`<td><input type="number" min="0" step="1" class="cell-input obs" data-i="${i}" data-j="${j}" value="${state.data[i][j]}"></td>`;
+    html+=`<td class="total" id="rowsum-${i}"></td></tr>`;
+  }
+  html+='<tr><th>Spaltensumme</th>';
+  for(let j=0;j<c;j++) html+=`<td class="total" id="colsum-${j}"></td>`;
+  html+='<td class="total" id="grand"></td></tr></tbody></table>';
+  $("editor").innerHTML=html;
+
+  document.querySelectorAll(".obs").forEach(inp=>inp.addEventListener("input",()=>{
+    const i=+inp.dataset.i,j=+inp.dataset.j;
+    state.data[i][j]=Math.max(0,Number(inp.value)||0); calculate();
+  }));
+  document.querySelectorAll(".row-label").forEach(inp=>inp.addEventListener("input",()=>{
+    state.rows[+inp.dataset.i]=inp.value||`Zeile ${+inp.dataset.i+1}`; calculate();
+  }));
+  document.querySelectorAll(".col-label").forEach(inp=>inp.addEventListener("input",()=>{
+    state.cols[+inp.dataset.j]=inp.value||`Spalte ${+inp.dataset.j+1}`; calculate();
+  }));
+}
+
+function calculate(){
+  const O=state.data.map(row=>row.map(x=>Math.max(0,Number(x)||0)));
+  const r=O.length,c=O[0].length;
+  const rowS=O.map(row=>row.reduce((a,b)=>a+b,0));
+  const colS=Array.from({length:c},(_,j)=>O.reduce((s,row)=>s+row[j],0));
+  const n=rowS.reduce((a,b)=>a+b,0);
+
+  if(n<=0){ $("decision").className="status error"; $("decision").textContent="Die Gesamtsumme muss positiv sein."; return; }
+
+  const E=O.map((row,i)=>row.map((_,j)=>rowS[i]*colS[j]/n));
+  const contrib=O.map((row,i)=>row.map((x,j)=>E[i][j]>0?(x-E[i][j])**2/E[i][j]:0));
+  const resid=O.map((row,i)=>row.map((x,j)=>{
+    const pRow=rowS[i]/n,pCol=colS[j]/n;
+    const denom=Math.sqrt(E[i][j]*(1-pRow)*(1-pCol));
+    return denom>0?(x-E[i][j])/denom:0;
+  }));
+  const chi2=contrib.flat().reduce((a,b)=>a+b,0);
+  const df=(r-1)*(c-1);
+  const p=gammaincQ(df/2,chi2/2);
+  const cramer=Math.sqrt(chi2/(n*Math.min(r-1,c-1)));
+  const minExp=Math.min(...E.flat());
+  analysis={O,E,contrib,resid,rowS,colS,n,chi2,df,p,cramer,minExp};
+
+  rowS.forEach((x,i)=>{const el=$(`rowsum-${i}`);if(el)el.textContent=fmt(x,0)});
+  colS.forEach((x,j)=>{const el=$(`colsum-${j}`);if(el)el.textContent=fmt(x,0)});
+  if($("grand")) $("grand").textContent=fmt(n,0);
+
+  $("chi2").textContent=fmt(chi2,4);
+  $("df").textContent=df;
+  $("pvalue").textContent=p<0.0001?"< 0,0001":fmt(p,4);
+  $("cramer").textContent=fmt(cramer,3);
+  $("n").textContent=fmt(n,0);
+  $("minExp").textContent=fmt(minExp,2);
+
+  const alpha=Math.min(.2,Math.max(.001,Number($("alpha").value)||.05));
+  const type=$("testType").value;
+  const H0=type==="independence"
+    ?"Zwischen den beiden kategorialen Merkmalen besteht kein Zusammenhang."
+    :"Die diskreten Verteilungen sind in allen Stichproben gleich.";
+  const H1=type==="independence"
+    ?"Die Merkmale sind nicht unabhängig."
+    :"Mindestens eine Stichprobe besitzt eine andere Verteilung.";
+
+  let cls=p<alpha?"success":"status";
+  let txt=p<alpha
+    ? `<strong>Entscheidung:</strong> H₀ wird zum Niveau α = ${fmt(alpha,3)} verworfen. ${H1}`
+    : `<strong>Entscheidung:</strong> H₀ wird zum Niveau α = ${fmt(alpha,3)} nicht verworfen. Die Daten liefern keinen hinreichenden Nachweis gegen H₀.`;
+  if(minExp<5){
+    cls="status warning";
+    txt+=`<br><strong>Hinweis:</strong> Mindestens eine erwartete Häufigkeit liegt unter 5. Die Chi-Quadrat-Approximation kann ungenau sein.`;
+  }
+  $("decision").className=cls;
+  $("decision").innerHTML=`<div><strong>H₀:</strong> ${H0}</div><div><strong>H₁:</strong> ${H1}</div><div style="margin-top:6px">${txt}</div>`;
+
+  $("formula").textContent =
+`Erwartete Häufigkeit in Zelle (i,j):
+Eᵢⱼ = (Zeilensumme i · Spaltensumme j) / n
+
+Chi-Quadrat-Statistik:
+χ² = Σᵢ Σⱼ (Oᵢⱼ − Eᵢⱼ)² / Eᵢⱼ
+   = ${fmt(chi2,4)}
+
+Freiheitsgrade:
+df = (r−1)(c−1) = (${r}−1)(${c}−1) = ${df}
+
+Cramérs V:
+V = √[χ² / (n · min(r−1,c−1))]
+  = ${fmt(cramer,4)}`;
+
+  renderAnalysisTable();
+  drawChart();
+}
+
+function renderAnalysisTable(){
+  if(!analysis) return;
+  const map={expected:analysis.E,contributions:analysis.contrib,residuals:analysis.resid};
+  const M=map[activeView];
+  let html='<table><thead><tr><th></th>';
+  state.cols.forEach(c=>html+=`<th>${c}</th>`);
+  html+='</tr></thead><tbody>';
+  M.forEach((row,i)=>{
+    html+=`<tr><th>${state.rows[i]}</th>`;
+    row.forEach(v=>{
+      let cls="";
+      if(activeView==="residuals") cls=v>0?"resid-pos":v<0?"resid-neg":"";
+      html+=`<td class="${cls}">${fmt(v,activeView==="expected"?2:3)}</td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  $("analysisTable").innerHTML=html;
+  const notes={
+    expected:"Unter H₀ ergeben sich die erwarteten Häufigkeiten aus dem Produkt von Zeilen- und Spaltenanteil.",
+    contributions:"Große Zellbeiträge zeigen, welche Zellen besonders stark zur Teststatistik beitragen.",
+    residuals:"Als Faustregel gelten |Residuum| > 2 als auffällig; positive Werte bedeuten mehr, negative weniger Beobachtungen als unter H₀ erwartet."
+  };
+  $("analysisNote").textContent=notes[activeView];
+}
+
+function drawChart(){
+  if(!analysis) return;
+  const canvas=$("chart"), ctx=canvas.getContext("2d");
+  const W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle="#fff";ctx.fillRect(0,0,W,H);
+  const mode=$("chartMode").value;
+  const pad={l:90,r:40,t:30,b:75};
+  const plotW=W-pad.l-pad.r,plotH=H-pad.t-pad.b;
+
+  if(mode==="stacked"){
+    const colors=["#6558d3","#2f80ed","#32a852","#f2994a","#d95f8d","#8c6d31"];
+    const r=state.rows.length,c=state.cols.length;
+    const bw=plotW/r*.62,gap=plotW/r;
+    ctx.font="14px system-ui";ctx.textAlign="center";
+    for(let i=0;i<r;i++){
+      let y=pad.t+plotH;
+      for(let j=0;j<c;j++){
+        const h=analysis.rowS[i]?plotH*analysis.O[i][j]/analysis.rowS[i]:0;
+        y-=h;ctx.fillStyle=colors[j%colors.length];ctx.fillRect(pad.l+i*gap+(gap-bw)/2,y,bw,h);
+      }
+      ctx.fillStyle="#344054";ctx.fillText(state.rows[i],pad.l+i*gap+gap/2,H-42);
+    }
+    ctx.strokeStyle="#98a2b3";ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,pad.t+plotH);ctx.lineTo(W-pad.r,pad.t+plotH);ctx.stroke();
+    ctx.textAlign="left";
+    state.cols.forEach((c,j)=>{ctx.fillStyle=colors[j%colors.length];ctx.fillRect(pad.l+j*160,8,14,14);ctx.fillStyle="#475467";ctx.fillText(c,pad.l+20+j*160,20)});
+  } else if(mode==="mosaic"){
+    const colors=["#6558d3","#2f80ed","#32a852","#f2994a","#d95f8d"];
+    let x=pad.l;
+    for(let i=0;i<state.rows.length;i++){
+      const w=plotW*analysis.rowS[i]/analysis.n;
+      let y=pad.t;
+      for(let j=0;j<state.cols.length;j++){
+        const h=analysis.rowS[i]?plotH*analysis.O[i][j]/analysis.rowS[i]:0;
+        ctx.fillStyle=colors[j%colors.length];ctx.fillRect(x,y,w,h);
+        ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);
+        if(w>70 && h>28){ctx.fillStyle="#fff";ctx.textAlign="center";ctx.font="13px system-ui";ctx.fillText(analysis.O[i][j],x+w/2,y+h/2+4)}
+        y+=h;
+      }
+      ctx.fillStyle="#344054";ctx.textAlign="center";ctx.font="13px system-ui";ctx.fillText(state.rows[i],x+w/2,H-42);
+      x+=w;
+    }
+  } else {
+    const r=state.rows.length,c=state.cols.length;
+    const cw=plotW/c,ch=plotH/r;
+    for(let i=0;i<r;i++)for(let j=0;j<c;j++){
+      const v=analysis.resid[i][j],a=Math.min(1,Math.abs(v)/3.5);
+      ctx.fillStyle=v>=0?`rgba(47,128,237,${0.12+0.75*a})`:`rgba(200,59,59,${0.12+0.75*a})`;
+      ctx.fillRect(pad.l+j*cw,pad.t+i*ch,cw,ch);
+      ctx.strokeStyle="#fff";ctx.strokeRect(pad.l+j*cw,pad.t+i*ch,cw,ch);
+      ctx.fillStyle=Math.abs(v)>1.7?"#fff":"#172033";ctx.textAlign="center";ctx.font="bold 14px system-ui";
+      ctx.fillText(fmt(v,2),pad.l+j*cw+cw/2,pad.t+i*ch+ch/2+5);
+    }
+    ctx.fillStyle="#475467";ctx.font="13px system-ui";
+    state.cols.forEach((x,j)=>{ctx.textAlign="center";ctx.fillText(x,pad.l+j*cw+cw/2,H-42)});
+    state.rows.forEach((x,i)=>{ctx.textAlign="right";ctx.fillText(x,pad.l-10,pad.t+i*ch+ch/2+5)});
+  }
+}
+
+function loadDataset(){
+  state=JSON.parse(JSON.stringify(datasets[$("dataset").value]));
+  $("description").textContent=state.desc;
+  renderEditor();calculate();
+}
+
+$("load").onclick=loadDataset;
+$("recalc").onclick=calculate;
+$("alpha").addEventListener("input",calculate);
+$("testType").addEventListener("change",calculate);
+$("chartMode").addEventListener("change",drawChart);
+
+$("addRow").onclick=()=>{
+  state.rows.push(`Zeile ${state.rows.length+1}`);
+  state.data.push(Array(state.cols.length).fill(0));
+  renderEditor();calculate();
+};
+$("addCol").onclick=()=>{
+  state.cols.push(`Spalte ${state.cols.length+1}`);
+  state.data.forEach(r=>r.push(0));
+  renderEditor();calculate();
+};
+$("removeRow").onclick=()=>{
+  if(state.rows.length>2){state.rows.pop();state.data.pop();renderEditor();calculate()}
+};
+$("removeCol").onclick=()=>{
+  if(state.cols.length>2){state.cols.pop();state.data.forEach(r=>r.pop());renderEditor();calculate()}
+};
+
+document.querySelectorAll(".tab").forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");activeView=btn.dataset.view;renderAnalysisTable();
+});
+
+loadDataset();
+</script>
+</body>
+</html>
